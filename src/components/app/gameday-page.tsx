@@ -1,0 +1,88 @@
+import { Link } from "@tanstack/react-router";
+import { useDeskDecision } from "@/lib/market/use-board";
+import { pickHero, pickInSport, sortByMood, type DeskPick } from "@/lib/market/picks";
+import { useDeskStore, selectUnit } from "@/lib/desk-store";
+import { formatBetUsd, formatChancePct, sportLabel } from "@/lib/copy";
+import { coreFunSplit } from "@/lib/market/engine";
+import { formatAmerican, formatKickoff } from "@/lib/utils";
+import { isCollegeSport } from "@/lib/market/universe";
+import { Camera } from "lucide-react";
+
+export function GamedayPage() {
+  const { picks, scan, snapshot } = useDeskDecision();
+  const stake = useDeskStore(selectUnit);
+  const liveBankroll = useDeskStore((s) => s.liveBankroll);
+  const split = coreFunSplit(liveBankroll);
+  const sportFilter = useDeskStore((s) => s.sportFilter);
+  const hideCollege = useDeskStore((s) => s.hideCollege);
+  const hideLive = useDeskStore((s) => s.hideLive);
+  const hiddenPickIds = useDeskStore((s) => s.hiddenPickIds);
+  const inSport = (p: DeskPick) => {
+    if (!pickInSport(p, sportFilter)) return false;
+    if (hideCollege && (isCollegeSport(p.sport) || p.parlay?.sports?.some(isCollegeSport))) return false;
+    if (hiddenPickIds.includes(p.id)) return false;
+    return true;
+  };
+  const popular = sortByMood((picks?.popular ?? []).filter(inSport).filter((p) => !p.row?.inPlay || !hideLive), "safe");
+  const hero = picks ? pickHero([picks.hero, ...popular].filter((p): p is DeskPick => Boolean(p)).filter(inSport), popular, "safe") : null;
+  const cards = (hero ? [hero, ...popular.filter((p) => p.id !== hero.id)] : popular).slice(0, 8);
+
+  return (
+    <div className="space-y-4">
+      <header>
+        <p className="text-sm text-gold">One screen. Kickoff, the pick, the dollars.</p>
+        <h1 className="font-display mt-1 text-3xl text-ink">Game day</h1>
+        <p className="mt-2 text-sm text-ink/80">
+          Photograph Hard Rock to confirm the live number. This site never places a bet.
+        </p>
+      </header>
+      {snapshot?.hours.label ? <p className="text-xs text-muted">{snapshot.hours.label}</p> : null}
+      {!cards.length ? (
+        <p className="text-sm text-muted">Nothing named yet. Open AI Picks, or photograph a Hard Rock screen.</p>
+      ) : (
+        <ul className="grid gap-3">
+          {cards.map((p) => (
+            <li key={p.id} className="paper-card p-5">
+              <p className="stamp text-gold">
+                {hero && p.id === hero.id ? "The Call" : sportLabel(p.sport)}
+                {p.start ? ` · ${formatKickoff(p.start, true)}` : ""}
+              </p>
+              <h2 className="font-display mt-2 text-2xl text-ink">{p.selection}</h2>
+              <p className="mt-1 text-sm text-gold">
+                Find it on Hard Rock Bet Florida
+                {p.price != null ? ` at ${formatAmerican(p.price)}` : ""}.
+              </p>
+              <p className="mt-3 font-display text-3xl tabular-nums text-gold">
+                {formatChancePct(p.chance) ?? "—"}
+              </p>
+              <p className="text-sm text-ink">Chance it hits. Not a guarantee.</p>
+              <p className="mt-2 text-base text-ink">
+                Recommended stake {formatBetUsd((p.parlay && p.parlay.legs.length >= 3) || (p.price != null && p.price >= 130) ? split.funTicket || stake : stake)}
+                {(p.parlay && p.parlay.legs.length >= 3) || (p.price != null && p.price >= 130)
+                  ? " · Fun / lotto dollars"
+                  : " · Core 1%"}
+                {p.price != null && stake > 0
+                  ? ` · if it hits you get about ${formatBetUsd(stake * (p.decimalPayout || 1))} back`
+                  : ""}
+                .
+              </p>
+              <Link
+                to="/ticket"
+                search={{ id: p.id }}
+                hash="lock-in"
+                className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-gold px-4 text-sm font-medium text-navy-deep"
+              >
+                <Camera className="size-4" strokeWidth={1.75} />
+                Confirm with Hard Rock Photo
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="text-xs text-muted">
+        {scan?.rows.length ? `${scan.rows.length} delayed rows on the board.` : "Board still loading."} 21+ stays in
+        the footer.
+      </p>
+    </div>
+  );
+}

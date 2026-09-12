@@ -1,0 +1,225 @@
+import { Button } from "@/components/ui/button";
+import { useDeskStore, selectTicketPulse } from "@/lib/desk-store";
+import { formatBetUsd, formatChancePct, profitOnStake } from "@/lib/copy";
+import { formatAmerican } from "@/lib/utils";
+import { BRAND } from "@/lib/brand";
+import { ScreenshotIngest, PhotoFirstNote } from "./screenshot-ingest";
+import { cn } from "@/lib/utils";
+import { Link } from "@tanstack/react-router";
+import { postMortem } from "@/lib/market/post-mortem";
+import { brierScore } from "@/lib/market/brier";
+import { downloadLedger, paperToLedger } from "@/lib/ledger";
+
+export function DeskPage() {
+  const paperTickets = useDeskStore((s) => s.paperTickets);
+  const liveBankroll = useDeskStore((s) => s.liveBankroll);
+  const weekAnchor = useDeskStore((s) => s.weekAnchorBankroll);
+  const selfExcluded = useDeskStore((s) => s.selfExcluded);
+  const grade = useDeskStore((s) => s.gradeTicket);
+  const resetPaper = useDeskStore((s) => s.resetPaper);
+  const setSelfExcluded = useDeskStore((s) => s.setSelfExcluded);
+  const pulse = selectTicketPulse({ paperTickets });
+  const open = paperTickets.filter((t) => t.status === "open");
+  const settled = paperTickets.filter((t) => t.status === "win" || t.status === "loss" || t.status === "void");
+  const weekPnl = liveBankroll - weekAnchor;
+  const brier = brierScore(
+    settled
+      .filter((t) => t.status === "win" || t.status === "loss")
+      .map((t) => ({ p: t.chance ?? 0.5, hit: t.status === "win" })),
+  );
+
+  return (
+    <div className="space-y-6">
+      <header className="max-w-2xl">
+        <p className="text-sm text-gold">Photographed tickets wait here</p>
+        <h1 className="font-display mt-2 text-3xl text-ink">Log</h1>
+        <p className="mt-3 text-ink/80">
+          Photograph a Hard Rock ticket. Confirm the line. After the game, tap Hit or Miss. This site never places the bet.
+        </p>
+      </header>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Stat
+          label="Open"
+          value={open.length ? formatBetUsd(pulse.atRisk) : "$0"}
+          note={open.length ? `${open.length} waiting on a game` : "Nothing waiting"}
+          gold={open.length > 0}
+        />
+        <Stat
+          label="This week"
+          value={formatBetUsd(weekPnl)}
+          note="Profit or loss"
+          up={weekPnl > 0}
+          down={weekPnl < 0}
+        />
+        <Stat
+          label="Hit / Miss"
+          value={`${pulse.wonCount} hit · ${pulse.lostCount} miss`}
+          note={pulse.net ? `Logged ${formatBetUsd(pulse.net)}` : "Record after you tap"}
+          up={pulse.net > 0}
+          down={pulse.net < 0}
+        />
+      </div>
+
+      <PhotoFirstNote venue="Hard Rock Bet Florida" />
+
+      <section>
+        <h2 className="font-display text-2xl text-ink">Waiting</h2>
+        {open.length ? (
+          <ul className="mt-3 grid gap-3">
+            {open.map((t) => {
+              const pay = t.price != null ? profitOnStake(t.stake, t.price) : null;
+              return (
+                <li key={t.id} className="paper-card p-5">
+                  <p className="stamp text-gold">Waiting</p>
+                  <h3 className="font-display mt-2 text-xl text-ink">{t.description}</h3>
+                  {t.home && t.away ? (
+                    <p className="mt-1 text-sm text-muted">
+                      {t.away} at {t.home}
+                    </p>
+                  ) : null}
+                  <p className="mt-1 text-sm text-ink">
+                    {formatChancePct(t.chance) ? `${formatChancePct(t.chance)} chance it hits` : "Chance not posted"}
+                    {t.livePrice != null || t.price != null
+                      ? ` · Hard Rock ${formatAmerican(t.livePrice ?? t.price!)}`
+                      : ""}
+                  </p>
+                  <p className="mt-2 text-base text-ink">
+                    If it hits you get {pay ? formatBetUsd(pay.total) : "the payout"}. If it misses you lose{" "}
+                    {formatBetUsd(t.stake)}.
+                  </p>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                    <Button className="min-h-14 text-base" onClick={() => grade(t.id, "win", t.livePrice ?? t.price)}>
+                      Hit
+                    </Button>
+                    <Button
+                      className="min-h-14 text-base"
+                      variant="outline"
+                      onClick={() => grade(t.id, "loss", t.livePrice ?? t.price)}
+                    >
+                      Miss
+                    </Button>
+                    <Button className="min-h-14 text-base" variant="ghost" onClick={() => grade(t.id, "void")}>
+                      Push
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <div className="paper-card mt-3 p-5">
+            <p className="text-base text-ink">Nothing waiting. Photograph a Hard Rock ticket to start a log.</p>
+            <div className="mt-4">
+              <ScreenshotIngest kind="ticket" heading="Photograph a Hard Rock ticket" />
+            </div>
+          </div>
+        )}
+      </section>
+
+      {open.length ? (
+        <details className="paper-card p-5">
+          <summary className="cursor-pointer text-sm font-medium text-gold">Add another photo</summary>
+          <div className="mt-3">
+            <ScreenshotIngest kind="ticket" heading="Photograph another Hard Rock ticket" embedded />
+          </div>
+        </details>
+      ) : null}
+
+      <section>
+        <h2 className="font-display text-2xl text-ink">Done</h2>
+        {settled.length === 0 ? (
+          <p className="mt-2 text-sm text-muted">Hit and Miss land here after you tap.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-line rounded-md bg-card shadow-[var(--shadow-paper)]">
+            {settled.map((t) => (
+              <li key={t.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-3 text-sm">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-ink">{t.description}</p>
+                  <p className="text-xs uppercase tracking-[0.12em] text-gold">
+                    {t.status === "win" ? "Hit" : t.status === "loss" ? "Miss" : "Push"}
+                  </p>
+                  <p className="mt-1 text-xs text-muted">
+                    {postMortem({
+                      selection: t.description,
+                      chance: t.chance,
+                      status: t.status,
+                    })}
+                  </p>
+                </div>
+                <span className={cn("font-mono tabular-nums", (t.pnl ?? 0) >= 0 ? "text-up" : "text-down")}>
+                  {formatBetUsd(t.pnl ?? 0)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <p className="text-sm">
+        <Link to="/more" hash="words" className="font-medium text-gold underline-offset-4 hover:underline">
+          Words we use
+        </Link>
+      </p>
+
+      {brier != null ? (
+        <p className="text-sm text-muted">
+          Rolling Brier on settled tickets: {brier.toFixed(3)}. After 20+ tickets a weak layer gets a 10% haircut. This
+          site never places a bet.
+        </p>
+      ) : (
+        <p className="text-sm text-muted">Brier score shows after eight settled Hit/Miss tickets.</p>
+      )}
+
+      <section className="flex flex-wrap items-center gap-3">
+        <Button
+          variant="outline"
+          onClick={() => downloadLedger(paperTickets.map(paperToLedger))}
+        >
+          Download my bets JSON
+        </Button>
+        <Button variant="outline" onClick={resetPaper}>
+          Clear the log
+        </Button>
+        <Button variant="danger" onClick={() => setSelfExcluded(!selfExcluded)}>
+          {selfExcluded ? "Turn advice back on (this device)" : "Pause all advice on this device"}
+        </Button>
+        <p className="text-xs text-muted">Clearing the log does not place or cancel anything at {BRAND.venueLive}.</p>
+      </section>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  note,
+  gold,
+  up,
+  down,
+}: {
+  label: string;
+  value: string;
+  note: string;
+  gold?: boolean;
+  up?: boolean;
+  down?: boolean;
+}) {
+  return (
+    <div className="paper-card p-4">
+      <p className="stamp text-muted">{label}</p>
+      <p
+        className={cn(
+          "font-display mt-2 text-2xl tabular-nums",
+          gold && "text-gold",
+          up && "text-up",
+          down && "text-down",
+          !gold && !up && !down && "text-ink",
+        )}
+      >
+        {value}
+      </p>
+      <p className="mt-1 text-xs text-muted">{note}</p>
+    </div>
+  );
+}
