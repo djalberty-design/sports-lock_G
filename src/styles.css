@@ -1,0 +1,182 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #0c1220;
+  --color-card: #141a28;
+  --color-ink: #f4f1e8;
+  --color-navy: #f4f1e8;
+  --color-navy-deep: #0c1220;
+  --color-gold: #ffb81c;
+  --color-muted: #a8a49c;
+  --color-faint: #6e6b66;
+  --color-line: #2a2a2a;
+  --color-up: #3fa36a;
+  --color-down: #d4544a;
+  --color-warn: #ffb81c;
+  --color-wash: #1a2130;
+  --color-wash-gold: #231c0a;
+  --color-background: #0b0b0c;
+  --color-foreground: #f4f1e8;
+  --color-primary: #ffb81c;
+  --color-primary-foreground: #0b0b0c;
+  --color-border: #2a2a2a;
+  --color-ring: #ffb81c;
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Oswald", "Impact", "Arial Narrow", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  --shadow-paper: 0px 0px 0px 1px rgba(255, 184, 28, 0.14), 0px 12px 32px -18px rgba(0, 0, 0, 0.7);
+  --shadow-paper-hover: 0px 0px 0px 1px rgba(255, 184, 28, 0.28), 0px 16px 36px -16px rgba(0, 0, 0, 0.75);
+  --shadow-stamp: 0px 0px 0px 1px rgba(255, 184, 28, 0.55);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  html,
+  body,
+  #app {
+    min-height: 100%;
+    background: var(--color-paper);
+    color: var(--color-ink);
+  }
+  body {
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    background-color: var(--color-paper);
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 184, 28, 0.08), transparent 55%);
+    background-attachment: fixed;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+    letter-spacing: 0.02em;
+    line-height: 1.15;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.paper-card {
+  background: var(--color-card);
+  box-shadow: var(--shadow-paper);
+  border-radius: var(--radius-lg);
+  transition: box-shadow 150ms var(--ease-out-soft);
+}
+
+.stamp {
+  font-family: var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.ticket-ribbon {
+  background: var(--color-gold);
+  color: var(--color-navy-deep);
+  box-shadow: var(--shadow-stamp);
+}
+
+.rink-rule {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
+}
+
+.lock-stamp {
+  animation: stamp-in 320ms var(--ease-out-soft);
+}
+
+@keyframes stamp-in {
+  from {
+    transform: scale(1.18) rotate(-8deg);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.sgp-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  background: var(--color-gold);
+  color: var(--color-navy-deep);
+  padding: 0.28rem 0.4rem;
+  border-radius: 4px;
+}
+
+.ticket-pulse {
+  animation: ticket-glow 1.8s var(--ease-out-soft) infinite;
+}
+
+@keyframes ticket-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 184, 28, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(255, 184, 28, 0.28);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lock-stamp,
+  .ticket-pulse {
+    animation: none;
+  }
+}
+
+.drawer-down {
+  animation: drawer-down 200ms var(--ease-out-soft);
+}
+
+@keyframes drawer-down {
+  from {
+    transform: translateY(-12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
