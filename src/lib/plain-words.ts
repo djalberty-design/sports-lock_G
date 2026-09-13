@@ -138,6 +138,7 @@ export const WORDS_WE_USE: { id: string; word: string; line: string }[] = [
 export const MORE_LINKS = [
   { to: "/more", hash: "how", label: "How this site works", note: "Four steps. Then you photograph Hard Rock." },
   { to: "/more", hash: "desks", label: "Desks and pin", note: "Every desk and the live constants." },
+  { to: "/more", hash: "never", label: "What this site will never do", note: "Hard lines. A later feature cannot cross them." },
   { to: "/more", hash: "words", label: "Words we use", note: "Chance, look, photo, The Call, Best Value." },
   { to: "/more", hash: "money", label: "My money", note: "Core 85% and Fun 15%. What you typed on Start." },
   { to: "/gameday", hash: "", label: "Game day", note: "Kickoff, the pick, the dollars. One screen." },
