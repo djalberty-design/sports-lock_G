@@ -165,6 +165,46 @@ export async function getMlbPlayerVolume(eventId: string): Promise<PlayerVolumeB
 }
 
 /**
+ * NHL Player Volume Parser
+ * Extracts expected Time on Ice (TOI) and Power Play share from the free NHL Public API.
+ */
+export async function getNhlPlayerVolume(eventId: string): Promise<PlayerVolumeBaseline[]> {
+  const url = `https://api-web.nhle.com/v1/game/${eventId}/boxscore`;
+  
+  const { data } = await fetchWithWatchdog(url, (json) => {
+    const playerByGame = json?.playerByGameStats;
+    if (!playerByGame) throw new Error("Missing NHL player boxscore data");
+    
+    const baselines: PlayerVolumeBaseline[] = [];
+    const sides = [playerByGame.awayTeam?.forwards, playerByGame.awayTeam?.defense, playerByGame.homeTeam?.forwards, playerByGame.homeTeam?.defense];
+    
+    for (const group of sides) {
+      if (!group) continue;
+      for (const player of group) {
+        const toi = player.toi || "00:00";
+        const [minutes, seconds] = toi.split(":").map(Number);
+        const totalMinutes = (minutes || 0) + (seconds || 0) / 60;
+        
+        // Convert TOI into a proportional share of a standard 60-minute game (normalized to ~18 mins for skaters)
+        const toiShare = totalMinutes / 20.0;
+        
+        baselines.push({
+          playerId: String(player.playerId),
+          playerName: `${player.name?.default || "Unknown"}`,
+          targetShare: Math.max(0.2, Math.min(1.5, toiShare)), // targetShare hijacked for TOI scaling
+          routeParticipation: 0,
+          redZoneSnapPct: 0,
+          epaPerPlay: player.powerPlayTimeOnIce ? 1.25 : 1.0 // PP boost factor
+        });
+      }
+    }
+    return baselines;
+  }, "NHL Web API");
+
+  return data ?? [];
+}
+
+/**
  * Advanced Process Metrics (EPA / xwOBA) Stub
  */
 export async function getAdvancedProcess(sport: string, teamId: string): Promise<TeamLooks | undefined> {
