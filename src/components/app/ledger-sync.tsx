@@ -14,7 +14,7 @@ export function LedgerSync() {
   const lastSent = useRef("");
 
   useEffect(() => {
-    if (!user || !hydrated || pulled.current) return;
+    if (!user || user.isDevFallback || !hydrated || pulled.current) return;
     pulled.current = true;
     void pullMyLedger()
       .then((entries) => {
@@ -49,7 +49,7 @@ export function LedgerSync() {
   }, [user, hydrated]);
 
   useEffect(() => {
-    if (!user || !hydrated) return;
+    if (!user || user.isDevFallback || !hydrated) return;
     const payload = JSON.stringify(paperTickets.map((t) => t.id + t.status + t.stake));
     if (payload === lastSent.current) return;
     const timer = window.setTimeout(() => {
