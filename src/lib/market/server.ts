@@ -3,6 +3,7 @@ import { BRAND } from "@/lib/brand";
 import { buildLiveSnapshot } from "./live-board";
 import { ESPN_PATH, applyLeaderStats, enrichResearchForm, fetchEspnRoster, fetchEspnTeamLeaders, mergeResearchPlayers, parseEspnSummary, parseInternalEventId, type EventResearch } from "./research";
 import type { ContestOffer, DeskSnapshot, ParsedTicket } from "./types";
+import { resolveVisionKey, VISION_MODELS, VISION_UNAVAILABLE } from "./vision-key";
 
 export const getBoardSnapshot = createServerFn({ method: "GET" }).handler(async (): Promise<DeskSnapshot> => {
   return buildLiveSnapshot();
@@ -59,9 +60,9 @@ export const parseTicketImage = createServerFn({ method: "POST" })
     | { ok: true; kind: "contest"; contests: ContestOffer[]; note: string }
     | { ok: false; error: string }
   > => {
-    const apiKey = process.env.XAI_API_KEY;
+    const apiKey = resolveVisionKey();
     if (!apiKey) {
-      return { ok: false, error: "Vision parse is unavailable. Enter the fields by hand and confirm them." };
+      return { ok: false, error: VISION_UNAVAILABLE };
     }
     const mime = data.mime || "image/jpeg";
     const url = data.image.startsWith("data:") ? data.image : `data:${mime};base64,${data.image}`;
@@ -84,31 +85,43 @@ Rules: ticket = Hard Rock / DraftKings odds. slate = player salary list. contest
     const prompt =
       data.kind === "slate" ? slatePrompt : data.kind === "contest" ? contestPrompt : data.kind === "auto" ? autoPrompt : ticketPrompt;
 
-    const res = await fetch("https://api.x.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "grok-4.5",
-        max_tokens: 1600,
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "image_url", image_url: { url } },
-              { type: "text", text: prompt },
-            ],
-          },
-        ],
-      }),
-    });
-    if (!res.ok) {
-      return { ok: false, error: `Parse failed (${res.status}). Enter fields by hand.` };
+    let text = "";
+    let lastStatus = 0;
+    for (const model of VISION_MODELS) {
+      const res = await fetch("https://api.x.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 1600,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "image_url", image_url: { url } },
+                { type: "text", text: prompt },
+              ],
+            },
+          ],
+        }),
+      });
+      lastStatus = res.status;
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          return { ok: false, error: "Vision key was rejected. Check XAI_API_KEY on Vercel, then Redeploy." };
+        }
+        continue;
+      }
+      const body = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+      text = body.choices?.[0]?.message?.content ?? "";
+      if (text.trim()) break;
     }
-    const body = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-    const text = body.choices?.[0]?.message?.content ?? "";
+    if (!text.trim()) {
+      return { ok: false, error: `Parse failed (${lastStatus || "no model"}). Enter fields by hand.` };
+    }
     const jsonStart = text.indexOf("{");
     const jsonEnd = text.lastIndexOf("}");
     if (jsonStart < 0 || jsonEnd < 0) {
