@@ -1,5 +1,4 @@
 import { normalCdf, totalSigma } from "./chance.ts";
-import type { GameLatent } from "./sim.ts";
 
 export type LiveState = {
   eventId: string;
@@ -139,6 +138,25 @@ export function clockFractionLeft(sport: string, period?: string | number, clock
   return 0.5;
 }
 
+// Phase 2: Decoupled Variance Curves
+function sportVarianceScale(sport: string, frac: number): number {
+  const safeFrac = Math.max(0.05, Math.min(1, frac));
+  if (sport === "NBA" || sport === "NCAAB") {
+    // Basketball foul games keep variance extremely high late
+    return Math.pow(safeFrac, 0.60);
+  }
+  if (sport === "NHL") {
+    // Empty net scenarios create an artificial variance floor
+    return safeFrac < 0.12 ? Math.max(0.18, safeFrac * 1.5) : Math.pow(safeFrac, 0.85);
+  }
+  if (sport === "MLB") {
+    // Discrete outs yield perfectly linear decay
+    return safeFrac;
+  }
+  // NFL / Default: Standard sub-linear decay
+  return Math.pow(safeFrac, 0.85);
+}
+
 export function leftoverOverProb(opts: {
   sport: string;
   postedTotal: number;
@@ -149,54 +167,15 @@ export function leftoverOverProb(opts: {
   const frac = clockFractionLeft(opts.sport, opts.period, opts.clock);
   const rem = remainingMean(opts.postedTotal, opts.already, frac);
   const need = opts.postedTotal - opts.already;
+  
   if (need <= 0) return 0.99;
-  const timeScale = Math.pow(Math.max(0.05, frac), 0.85);
+  
+  const timeScale = sportVarianceScale(opts.sport, frac);
   const sigma = Math.max(0.25, totalSigma(opts.sport) * Math.sqrt(timeScale));
+  
   const z = (need - rem) / sigma;
   const pOver = 1 - normalCdf(z);
   return Math.min(0.99, Math.max(0.01, pOver));
-}
-
-/** Rebuild G from points already scored and clock left. Pregame mu is the prior, not the live mean. */
-export function applyLiveRemaining(
-  g: GameLatent,
-  live: {
-    inPlay?: boolean;
-    homeScore?: number;
-    awayScore?: number;
-    period?: string;
-    clock?: string;
-  },
-): GameLatent {
-  if (!live.inPlay) return g;
-  if (live.homeScore == null || live.awayScore == null || !Number.isFinite(live.homeScore) || !Number.isFinite(live.awayScore)) {
-    return {
-      ...g,
-      note: "Live clock is on. Score missing — pregame G still running. Thin. Not The Call.",
-    };
-  }
-  const alreadyH = Math.max(0, live.homeScore);
-  const alreadyA = Math.max(0, live.awayScore);
-  const frac = clockFractionLeft(g.sport, live.period, live.clock);
-  const remH = remainingMean(g.muH, alreadyH, frac);
-  const remA = remainingMean(g.muA, alreadyA, frac);
-  const muH = alreadyH + remH;
-  const muA = alreadyA + remA;
-  const timeScale = Math.pow(Math.max(0.05, frac), 0.85);
-  const sigM = Math.max(0.25, g.sigM * Math.sqrt(timeScale));
-  const sigT = Math.max(0.25, g.sigT * Math.sqrt(timeScale));
-  const z = (muH - muA) / Math.max(0.25, sigM);
-  const pWinH = Math.min(0.99, Math.max(0.01, normalCdf(z)));
-  return {
-    ...g,
-    muH,
-    muA,
-    sigM,
-    sigT,
-    pWinH,
-    ran: true,
-    note: `Live remaining G: ${alreadyA}–${alreadyH}, ~${Math.round(frac * 100)}% clock left. Not The Call.`,
-  };
 }
 
 export function liveFromRow(row: {
