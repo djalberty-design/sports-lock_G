@@ -10,6 +10,18 @@ test("college game winner is legal in Florida", () => {
   assert.equal(isFloridaBlocked({ sport: "NCAAF", marketType: "spread", selection: "Alabama -7.5" }), false);
 });
 
+test("starter name on a college moneyline does not ban the game ticket", () => {
+  assert.equal(
+    isCollegePlayerBet({
+      sport: "NCAAF",
+      marketType: "ml",
+      selection: "Alabama to win",
+      player: "Milroe",
+    }),
+    false,
+  );
+});
+
 test("college player ticket is blocked even if isProp was forgotten", () => {
   assert.equal(
     isCollegePlayerBet({
@@ -20,7 +32,7 @@ test("college player ticket is blocked even if isProp was forgotten", () => {
     true,
   );
   assert.equal(
-    isFloridaBlocked({ sport: "NCAAB", player: "Flagg", selection: "Over 18.5 points" }),
+    isFloridaBlocked({ sport: "NCAAB", marketType: "prop", player: "Flagg", selection: "Over 18.5 points" }),
     true,
   );
   assert.match(floridaBlockReason({ sport: "NCAAF", isProp: true, selection: "QB yards" }) ?? "", /College player/);
