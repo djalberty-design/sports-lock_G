@@ -4,6 +4,7 @@ import { pickHero, pickInSport, sortByMood, type DeskPick } from "@/lib/market/p
 import { useDeskStore, selectUnit } from "@/lib/desk-store";
 import { formatBetUsd, formatChancePct, sportLabel } from "@/lib/copy";
 import { coreFunSplit } from "@/lib/market/engine";
+import { feeBadge, timingKind, TIMING_COPY, earlyMover } from "@/lib/market/edge";
 import { formatAmerican, formatKickoff } from "@/lib/utils";
 import { isCollegeSport } from "@/lib/market/universe";
 import { Camera } from "lucide-react";
@@ -37,46 +38,68 @@ export function GamedayPage() {
         </p>
       </header>
       {snapshot?.hours.label ? <p className="text-xs text-muted">{snapshot.hours.label}</p> : null}
+      <p className="text-xs text-muted">
+        Core {formatBetUsd(split.core)} · Fun {formatBetUsd(split.fun)}. 3-pick tickets use Fun dollars so they cannot eat Core.
+      </p>
       {!cards.length ? (
         <p className="text-sm text-muted">Nothing named yet. Open AI Picks, or photograph a Hard Rock screen.</p>
       ) : (
         <ul className="grid gap-3">
-          {cards.map((p) => (
-            <li key={p.id} className="paper-card p-5">
-              <p className="stamp text-gold">
-                {hero && p.id === hero.id ? "The Call" : sportLabel(p.sport)}
-                {p.start ? ` · ${formatKickoff(p.start, true)}` : ""}
-              </p>
-              <h2 className="font-display mt-2 text-2xl text-ink">{p.selection}</h2>
-              <p className="mt-1 text-sm text-gold">
-                Find it on Hard Rock Bet Florida
-                {p.price != null ? ` at ${formatAmerican(p.price)}` : ""}.
-              </p>
-              <p className="mt-3 font-display text-3xl tabular-nums text-gold">
-                {formatChancePct(p.chance) ?? "—"}
-              </p>
-              <p className="text-sm text-ink">Chance it hits. Not a guarantee.</p>
-              <p className="mt-2 text-base text-ink">
-                Recommended stake {formatBetUsd((p.parlay && p.parlay.legs.length >= 3) || (p.price != null && p.price >= 130) ? split.funTicket || stake : stake)}
-                {(p.parlay && p.parlay.legs.length >= 3) || (p.price != null && p.price >= 130)
-                  ? " · Fun / lotto dollars"
-                  : " · Core 1%"}
-                {p.price != null && stake > 0
-                  ? ` · if it hits you get about ${formatBetUsd(stake * (p.decimalPayout || 1))} back`
-                  : ""}
-                .
-              </p>
-              <Link
-                to="/ticket"
-                search={{ id: p.id }}
-                hash="lock-in"
-                className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-gold px-4 text-sm font-medium text-navy-deep"
-              >
-                <Camera className="size-4" strokeWidth={1.75} />
-                Confirm with Hard Rock Photo
-              </Link>
-            </li>
-          ))}
+          {cards.map((p) => {
+            const fun = Boolean((p.parlay && p.parlay.legs.length >= 3) || (p.price != null && p.price >= 130));
+            const dollars = fun ? split.funTicket || stake : stake;
+            const fee = feeBadge(p.row?.hold);
+            const timing = timingKind({
+              steam: p.tapeLean === "sharp",
+              tapeLean: p.tapeLean,
+              favorite: (p.price ?? 0) < 0,
+            });
+            const early = Boolean(p.earlyMover) || earlyMover(p.chance, p.predictHome);
+            return (
+              <li key={p.id} className="paper-card p-5">
+                <p className="stamp text-gold">
+                  {hero && p.id === hero.id ? "The Call" : sportLabel(p.sport)}
+                  {p.start ? ` · ${formatKickoff(p.start, true)}` : ""}
+                </p>
+                <h2 className="font-display mt-2 text-2xl text-ink">{p.selection}</h2>
+                <p className="mt-1 text-sm text-gold">
+                  Find it on Hard Rock Bet Florida
+                  {p.price != null ? ` at ${formatAmerican(p.price)}` : ""}.
+                </p>
+                <p className="mt-3 font-display text-3xl tabular-nums text-gold">
+                  {formatChancePct(p.chance) ?? "—"}
+                </p>
+                <p className="text-sm text-ink">Chance it hits. Not a guarantee.</p>
+                <p className="mt-2 text-base text-ink">
+                  Recommended stake {formatBetUsd(dollars)}
+                  {fun ? " · Fun / lotto dollars" : " · Core 1%"}
+                  {p.price != null && dollars > 0
+                    ? ` · if it hits you get about ${formatBetUsd(dollars * (p.decimalPayout || 1))} back`
+                    : ""}
+                  .
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {fee ? <span className="rounded-sm bg-wash px-2 py-1 text-xs text-muted">{fee.text}</span> : null}
+                  {timing ? (
+                    <span className="rounded-sm bg-wash-gold px-2 py-1 text-xs text-gold">{TIMING_COPY[timing].title}</span>
+                  ) : null}
+                  {early ? (
+                    <span className="rounded-sm bg-wash-gold px-2 py-1 text-xs text-gold">Early Mover Advantage</span>
+                  ) : null}
+                </div>
+                {timing ? <p className="mt-2 text-xs text-muted">{TIMING_COPY[timing].line}</p> : null}
+                <Link
+                  to="/ticket"
+                  search={{ id: p.id }}
+                  hash="lock-in"
+                  className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-gold px-4 text-sm font-medium text-navy-deep"
+                >
+                  <Camera className="size-4" strokeWidth={1.75} />
+                  Confirm with Hard Rock Photo
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
       <p className="text-xs text-muted">
