@@ -13,6 +13,7 @@ import type { ScanBundle } from "./types";
 import { oddsFingerprint, rankDesk } from "./rank";
 import { DEFAULT_DESK_SETTINGS, rankSettingsOf, type DeskSettings } from "@/lib/desk-settings";
 import { readDeskSettings, readHiddenPicks } from "@/lib/desk-public";
+import { DESK_VERSION } from "./rules";
 
 export function DeskDecisionProvider({ children }: { children: ReactNode }) {
   const q = useBoardQuery();
@@ -47,8 +48,7 @@ export function DeskDecisionProvider({ children }: { children: ReactNode }) {
   const remoteHidden = hiddenQuery.data ?? [];
 
   const snapshot = useMemo(() => overlayConfirmed(q.data, confirmedTickets), [q.data, confirmedTickets]);
-  const rankSource = q.data;
-  const fingerprint = rankSource ? oddsFingerprint(rankSource) : "";
+  const fingerprint = snapshot ? oddsFingerprint(snapshot) : "";
   const settingsKey = JSON.stringify(rankSettingsOf(settings));
 
   const [scan, setScan] = useState<ScanBundle | null>(null);
@@ -58,9 +58,9 @@ export function DeskDecisionProvider({ children }: { children: ReactNode }) {
   const job = useRef(0);
   const workerRef = useRef<Worker | null>(null);
   const lastKey = useRef("");
-  const rankSourceRef = useRef(rankSource);
+  const snapshotRef = useRef(snapshot);
   const settingsRef = useRef(settings);
-  rankSourceRef.current = rankSource;
+  snapshotRef.current = snapshot;
   settingsRef.current = settings;
 
   useEffect(() => {
@@ -71,9 +71,9 @@ export function DeskDecisionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const snap = rankSourceRef.current;
+    const snap = snapshotRef.current;
     if (!snap || !fingerprint) return;
-    const key = `${fingerprint}|${halt}|${settingsKey}`;
+    const key = `${DESK_VERSION}|${fingerprint}|${halt}|${settingsKey}`;
     if (key === lastKey.current) return;
     lastKey.current = key;
     const id = ++job.current;
