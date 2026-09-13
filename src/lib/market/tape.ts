@@ -1,7 +1,5 @@
 import type { MarketType, PublicSplit, ScanRow, TapeLean } from "./types.ts";
 
-/** Ticket count vs handle (dollar %) — the Florida-book question. */
-
 export type TapeRead = {
   lean: TapeLean;
   divergence: number;
@@ -34,36 +32,30 @@ export function analyzeTape(ticketPct: number, handlePct: number, steam = false)
     return {
       lean: "neutral",
       divergence,
-      note: `Bets ${Math.round(t * 100)}% · money ${Math.round(h * 100)}%. Tickets and dollars agree — no sharp/public split.`,
+      note: `Bets ${Math.round(t * 100)}% · money ${Math.round(h * 100)}%. Tickets and dollars agree.`,
     };
   }
   if (divergence >= 0.07) {
     return {
       lean: "sharp",
       divergence,
-      note: `Bets ${Math.round(t * 100)}% · money ${Math.round(h * 100)}%. More dollars than tickets on this side — that's the sharp tell${steam ? ", and the line is moving with the money" : ""}.`,
+      note: `Bets ${Math.round(t * 100)}% · money ${Math.round(h * 100)}%. More dollars than tickets on this side — sharp action${steam ? " (steaming)" : ""}.`,
     };
   }
   if (divergence <= -0.07) {
     return {
       lean: "public",
       divergence,
-      note: `Bets ${Math.round(t * 100)}% · money ${Math.round(h * 100)}%. The public is on the tickets; the money is not. We do not copy the crowd.`,
+      note: `Bets ${Math.round(t * 100)}% · money ${Math.round(h * 100)}%. Public heavy.`,
     };
   }
   return {
     lean: steam ? "sharp" : "neutral",
     divergence,
-    note: steam
-      ? `Bets ${Math.round(t * 100)}% · money ${Math.round(h * 100)}%. Line is steaming — treat as informed money, not a lock.`
-      : `Bets ${Math.round(t * 100)}% · money ${Math.round(h * 100)}%.`,
+    note: steam ? "Line is steaming." : `Bets ${Math.round(t * 100)}% · money ${Math.round(h * 100)}%.`,
   };
 }
 
-/**
- * When a feed only publishes ticket % , reconstruct handle from the open→close move.
- * Public tickets on a side + the line moving the other way = money on the opposite side.
- */
 export function reconstructHandle(ticketHome: number, openHome?: number, closeHome?: number): number {
   const t = clip01(ticketHome);
   if (openHome == null || closeHome == null || !Number.isFinite(openHome) || !Number.isFinite(closeHome)) {
@@ -76,16 +68,20 @@ export function reconstructHandle(ticketHome: number, openHome?: number, closeHo
   return t;
 }
 
+// Upgraded: Integrates Kelly Criterion to evaluate single-leg edges
 export function deskScore(chance: number, price: number, lean?: TapeLean | null): number {
   if (!Number.isFinite(chance) || chance <= 0 || !Number.isFinite(price)) return -99;
   const pay = price >= 0 ? price / 100 : 100 / Math.abs(price);
   if (!(pay > 0)) return -99;
+  
   const ev = chance * (1 + pay) - 1;
-  const blend = chance * chance * Math.sqrt(pay);
-  let s =
-    pay < 0.65 ? blend * 0.35 + ev * 0.15 : blend * 0.55 + Math.max(ev, -0.08) * 0.45 + chance * 0.12;
-  if (lean === "sharp") s += 0.055;
+  const kelly = Math.max(0, (chance * pay - (1 - chance)) / pay);
+  
+  let s = (Math.pow(chance, 1.5) * Math.sqrt(pay) * 0.45) + (Math.max(ev, -0.05) * 0.35) + (kelly * 0.20);
+  
+  if (lean === "sharp") s += 0.06;
   else if (lean === "public") s -= 0.035;
+  
   return s;
 }
 
@@ -271,7 +267,7 @@ export function splitsFromEspnWinPct(opts: {
     handlePct: Math.round(h * 100),
     lean: "neutral",
     source: "espn-winpct",
-    note: `ESPN pick-center ${Math.round(h * 100)}% on ${opts.home}. This is a model/pick %, not Hard Rock's book. Weak layer.`,
+    note: `ESPN pick-center ${Math.round(h * 100)}% on ${opts.home}.`,
   };
 }
 
