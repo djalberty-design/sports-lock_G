@@ -683,3 +683,21 @@ function poolLayers(
     overdispersed,
   };
 }
+export function poissonCdf(k: number, lambda: number): number {
+  if (lambda <= 0) return 1;
+  if (k < 0) return 0;
+  const cap = Math.min(Math.floor(k), 80);
+  let term = Math.exp(-lambda);
+  let sum = term;
+  for (let i = 1; i <= cap; i++) {
+    term *= lambda / i;
+    sum += term;
+    if (term < 1e-12) break;
+  }
+  return Math.min(1, sum);
+}
+
+export function poissonOver(lambda: number, line: number): number {
+  const k = Math.floor(line);
+  return invLogit(logit(1 - poissonCdf(k, Math.max(0.02, lambda))), 0.06, 0.94);
+}
