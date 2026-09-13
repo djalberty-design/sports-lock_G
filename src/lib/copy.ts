@@ -38,17 +38,17 @@ export const LANE_COPY: Record<Lane, { kicker: string; name: string; blurb: stri
   safe: {
     kicker: "Safest",
     name: "High probability",
-    blurb: "65% is the preferred floor. If nobody clears it, the highest-probability ticket still shows so the column is never empty.",
+    blurb: "Highest chance that still pays. 65% floor; otherwise Highest Probability Today.",
   },
   middle: {
     kicker: "Best Value",
     name: "Smart extra vs the fee",
-    blurb: "Smart +EV plays. The gold ribbon is The Call — a different ticket. Still not a guarantee.",
+    blurb: "Best extra vs the sportsbook fee. Not the gold ribbon. The gold ribbon is The Call.",
   },
   risky: {
     kicker: "Pays More",
     name: "Longer prices",
-    blurb: "Plus-money underdogs and high-multiplier combos (+130 to +600) that still have an edge.",
+    blurb: "Plus-money underdogs and high-multiplier combos that still have a real edge.",
   },
 };
 
@@ -63,7 +63,7 @@ export const SIZE_LABEL: Record<"seed" | "tiny" | "small" | "working" | "full", 
 export const HOW_TO_STEPS = [
   "Type how much money you have. Core bankroll is 85% of that — 1% of core is the next single. Fun / lotto is the other 15%.",
   "Open AI Picks. Three columns: Safest, Best Value, Pays More. The gold ribbon is The Call. Photograph Hard Rock to confirm the live number.",
-  "Tap a ticket for the full breakdown. Confirm with a Hard Rock photo. Check Hit / Miss dollars — then save it to Log.",
+  "Tap a ticket for the full breakdown. Photograph Hard Rock. Check Hit / Miss dollars — then save it to Log.",
   "Saved tickets wait on Log. When the game ends, tap Hit or Miss. Money on Start moves the same way the book would.",
 ] as const;
 
@@ -79,6 +79,12 @@ export const PLAIN_ENGLISH: { term: string; label: string; line: string }[] = [
   { term: "Steam / Line Move", label: "Smart Money Moving", line: "Large amounts of money just moved this number. Act now before it gets worse." },
   { term: "Push", label: "Tie / Refund", line: "The game landed on the exact number. You get your original money back." },
   { term: "Variance", label: "Game Luck vs. Strategy", line: "Normal good or bad bounces (fumbles, referee calls) that happen in sports." },
+  { term: "The Call", label: "The Call", line: "The gold-ribbon single of the day. Highest-conviction gated play. Not a guarantee. Not Best Value." },
+  { term: "Best Value", label: "Best Value", line: "The column of smart extra vs the sportsbook fee. Not the gold ribbon." },
+  { term: "Safest", label: "Safest", line: "Highest chance that still pays. 65% floor; otherwise Highest Probability Today." },
+  { term: "Quality 0.72", label: "Strong look", line: "How complete the information is. Not a 72% chance it hits." },
+  { term: "PHOTOGRAPHED", label: "Price from your photo", line: "The odds came from the Hard Rock screenshot you uploaded." },
+  { term: "(no photo)", label: "Photo to lock this price", line: "The % is research on a delayed number until you photograph Hard Rock." },
 ];
 
 export function sportLabel(sport: string): string {
@@ -102,7 +108,8 @@ export function sportLabel(sport: string): string {
 
 export function formatChancePct(p?: number | null, digits = 0): string | null {
   if (p == null || !Number.isFinite(p)) return null;
-  const pct = Math.round(p * 100 * 10 ** digits) / 10 ** digits;
+  const clipped = Math.min(0.99, Math.max(0, p));
+  const pct = Math.round(clipped * 100 * 10 ** digits) / 10 ** digits;
   return digits ? `${pct.toFixed(digits)}%` : `${pct}%`;
 }
 
@@ -126,7 +133,6 @@ export function shortPick(selection: string, marketType?: MarketType | string): 
   if (!selection) return "Pick";
   return selection.replace(/\s+/g, " ").trim();
 }
-
 
 export function marketInEnglish(t?: MarketType | string): string {
   if (t === "ml" || t === "spread" || t === "total" || t === "prop") return MARKET_LABEL[t];
