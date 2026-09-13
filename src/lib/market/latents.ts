@@ -12,6 +12,7 @@ import { applyAvailabilityToMeans } from "./availability.ts";
 import { applyProcessToMeans } from "./process-g.ts";
 import { applyRecencyToMeans } from "./recency-g.ts";
 import { applySplitsToMeans } from "./splits-g.ts";
+import { applyMatchupToMeans } from "./matchup-g.ts";
 
 export type LiveLatentFields = {
   inPlay?: boolean;
@@ -90,9 +91,22 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
     1,
     1,
   );
-  latent.muH *= venueMeans.muH * restMeans.muH * avail.muH * processMeans.muH * recencyMeans.muH * splitMeans.muH;
-  latent.muA *= venueMeans.muA * restMeans.muA * avail.muA * processMeans.muA * recencyMeans.muA * splitMeans.muA;
-  const note = [venueMeans.note, restMeans.note, avail.note, processMeans.empty ? undefined : processMeans.note, recencyMeans.empty ? undefined : recencyMeans.note, splitMeans.empty ? undefined : splitMeans.note].filter(Boolean).join(" ");
+  const matchupMeans = applyMatchupToMeans(
+    {
+      sport: input.sport,
+      homeLooks: input.homeLooks,
+      awayLooks: input.awayLooks,
+      homeEra: input.homeEra,
+      awayEra: input.awayEra,
+      homePitcherHand: input.homePitcherHand,
+      awayPitcherHand: input.awayPitcherHand,
+    },
+    1,
+    1,
+  );
+  latent.muH *= venueMeans.muH * restMeans.muH * avail.muH * processMeans.muH * recencyMeans.muH * splitMeans.muH * matchupMeans.muH;
+  latent.muA *= venueMeans.muA * restMeans.muA * avail.muA * processMeans.muA * recencyMeans.muA * splitMeans.muA * matchupMeans.muA;
+  const note = [venueMeans.note, restMeans.note, avail.note, processMeans.empty ? undefined : processMeans.note, recencyMeans.empty ? undefined : recencyMeans.note, splitMeans.empty ? undefined : splitMeans.note, matchupMeans.empty ? undefined : matchupMeans.note].filter(Boolean).join(" ");
   if (note) latent.note = note;
   const next = applyLiveRemaining(latent, {
     inPlay: input.inPlay,
