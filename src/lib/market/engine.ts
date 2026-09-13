@@ -17,7 +17,7 @@ import type {
 import { deskScore, parlayScore, stampRows } from "./tape.ts";
 import { correlationOf, sgpHaircut, typicalParlayJuice } from "./parlays.ts";
 import { growthScore, jointFromLegs, sameGameRho } from "./copula.ts";
-import { blendFair, drawPaths, jointHit, latentFromScores, simCover, simOver, simWin } from "./sim.ts";
+import { blendFair, drawPaths, latentFromScores, simCover, simOver, simWin } from "./sim.ts";
 import { leftoverOverProb, liveFromRow } from "./live-state.ts";
 import { buildLatents } from "./latents.ts";
 import { buildUsage, usageOf } from "./usage.ts";
