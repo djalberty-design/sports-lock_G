@@ -40,3 +40,34 @@ export function dataUrlToBytes(dataUrl: string): { b64: string; mime: string } {
   if (!m) return { b64: dataUrl, mime: "image/jpeg" };
   return { mime: m[1] || "image/jpeg", b64: m[2] || "" };
 }
+
+/** Smaller JPEG for Log. Full 1200px OCR image is too big for localStorage. */
+export async function makeThumb(dataUrl: string, maxDim = 320, quality = 0.72): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(dataUrl);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
