@@ -4,6 +4,7 @@ import { formatBetUsd, formatChancePct, profitOnStake, shortPick } from "@/lib/c
 import { useDeskStore, selectTicketPulse, selectUnit } from "@/lib/desk-store";
 import { americanToDecimal, decimalToAmerican, product } from "@/lib/market/engine";
 import { lineShiftAlert } from "@/lib/market/edge";
+import { photoBlockedReason, photoVerdict } from "@/lib/market/photo-law";
 import { namesHit } from "@/lib/market/research";
 import type { PaperTicket, ParsedTicket, ScanRow } from "@/lib/market/types";
 import { cn, formatAmerican } from "@/lib/utils";
@@ -39,14 +40,15 @@ export function TicketReview({
   const delayed = items.map((t) => delayedMatch(rows, t));
   const livePrices = items.map((t) => t.price);
   const delayedPrices = delayed.map((r, i) => r?.price ?? livePrices[i]);
-  const chance = multi
-    ? product(items.map((t, i) => delayed[i]?.fairProb || 0.5))
-    : delayed[0]?.fairProb;
+  const fairs = items.map((_, i) => delayed[i]?.fairProb).filter((p): p is number => p != null && Number.isFinite(p) && p > 0);
+  const chance = fairs.length === items.length ? (multi ? product(fairs) : fairs[0]) : undefined;
   const decimal = product(livePrices.map((p) => americanToDecimal(p)));
   const delayedDecimal = product(delayedPrices.map((p) => americanToDecimal(p)));
   const liveAmerican = items.length === 1 ? livePrices[0] : decimalToAmerican(decimal);
   const delayedAmerican = items.length === 1 ? delayedPrices[0] : decimalToAmerican(delayedDecimal);
   const moved = delayedAmerican !== liveAmerican;
+  const blocked = photoBlockedReason(items);
+  const verdict = photoVerdict(chance, liveAmerican);
   const title =
     items.length === 1
       ? shortPick(items[0].selection, items[0].marketType)
@@ -107,6 +109,14 @@ export function TicketReview({
           {lineShiftAlert(delayedAmerican, liveAmerican, chance ?? undefined)}
         </p>
       ) : null}
+      {verdict ? (
+        <p className="text-sm font-medium text-ink">
+          At this Hard Rock number: <span className="text-gold">{verdict}</span>
+        </p>
+      ) : chance == null ? (
+        <p className="text-sm text-muted">No desk line to compare yet. We can still lock the Hard Rock number from the photo.</p>
+      ) : null}
+      {blocked ? <p className="text-sm text-down">{blocked}</p> : null}
 
       <WagerMeter
         size="lg"
@@ -118,7 +128,7 @@ export function TicketReview({
       <p className="text-xs text-muted">
         These dollars use This ticket from Start. Saving to Log does not place the bet — you still tap Bet at Hard Rock Bet.
       </p>
-      <Button className="w-full" size="lg" onClick={onLock}>
+      <Button className="w-full" size="lg" onClick={onLock} disabled={Boolean(blocked)}>
         Lock live number and save to Log
       </Button>
       {error ? <p className="text-sm text-down">{error}</p> : null}
@@ -233,10 +243,8 @@ export function buildLockPayload(
   const decimal = product(livePrices.map((p) => americanToDecimal(p)));
   const price = items.length === 1 ? items[0].price : decimalToAmerican(decimal);
   const delayedPrice = delayed[0]?.price;
-  const chance =
-    items.length > 1
-      ? product(items.map((_, i) => delayed[i]?.fairProb || 0.5))
-      : delayed[0]?.fairProb;
+  const fairs = items.map((_, i) => delayed[i]?.fairProb).filter((p): p is number => p != null && Number.isFinite(p));
+  const chance = items.length > 1 ? (fairs.length === items.length ? product(fairs) : undefined) : delayed[0]?.fairProb;
   const desc =
     items.length === 1
       ? `${shortPick(items[0].selection, items[0].marketType)} · ${items[0].away} at ${items[0].home}`
