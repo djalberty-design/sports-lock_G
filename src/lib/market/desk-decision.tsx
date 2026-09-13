@@ -14,6 +14,8 @@ import { oddsFingerprint, rankDesk } from "./rank";
 import { DEFAULT_DESK_SETTINGS, rankSettingsOf, type DeskSettings } from "@/lib/desk-settings";
 import { readDeskSettings, readHiddenPicks } from "@/lib/desk-public";
 import { DESK_VERSION } from "./rules";
+import { paperToLedger } from "@/lib/ledger";
+import { activateLedgerReliability } from "./ledger-law";
 
 export function DeskDecisionProvider({ children }: { children: ReactNode }) {
   const q = useBoardQuery();
@@ -26,6 +28,7 @@ export function DeskDecisionProvider({ children }: { children: ReactNode }) {
   const ignoreRibbon = useDeskStore((s) => s.ignoreRibbon);
   const slate = useDeskStore((s) => s.slate);
   const confirmedTickets = useDeskStore((s) => s.confirmedTickets);
+  const paperTickets = useDeskStore((s) => s.paperTickets);
   const halt = useDeskStore(selectDailyHalt);
   const weeklyHalt = useDeskStore(selectWeeklyHalt);
 
@@ -62,6 +65,10 @@ export function DeskDecisionProvider({ children }: { children: ReactNode }) {
   const settingsRef = useRef(settings);
   snapshotRef.current = snapshot;
   settingsRef.current = settings;
+
+  useEffect(() => {
+    activateLedgerReliability(paperTickets.map(paperToLedger));
+  }, [paperTickets]);
 
   useEffect(() => {
     return () => {
