@@ -10,6 +10,7 @@ import { applyVenueToMeans } from "./venues.ts";
 import { applyRestToMeans } from "./rest.ts";
 import { applyAvailabilityToMeans } from "./availability.ts";
 import { applyProcessToMeans } from "./process-g.ts";
+import { applyRecencyToMeans } from "./recency-g.ts";
 
 export type LiveLatentFields = {
   inPlay?: boolean;
@@ -78,9 +79,14 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
     1,
     1,
   );
-  latent.muH *= venueMeans.muH * restMeans.muH * avail.muH * processMeans.muH;
-  latent.muA *= venueMeans.muA * restMeans.muA * avail.muA * processMeans.muA;
-  const note = [venueMeans.note, restMeans.note, avail.note, processMeans.empty ? undefined : processMeans.note].filter(Boolean).join(" ");
+  const recencyMeans = applyRecencyToMeans(
+    { sport: input.sport, home: input.home, away: input.away, lastFive: input.lastFive },
+    1,
+    1,
+  );
+  latent.muH *= venueMeans.muH * restMeans.muH * avail.muH * processMeans.muH * recencyMeans.muH;
+  latent.muA *= venueMeans.muA * restMeans.muA * avail.muA * processMeans.muA * recencyMeans.muA;
+  const note = [venueMeans.note, restMeans.note, avail.note, processMeans.empty ? undefined : processMeans.note, recencyMeans.empty ? undefined : recencyMeans.note].filter(Boolean).join(" ");
   if (note) latent.note = note;
   const next = applyLiveRemaining(latent, {
     inPlay: input.inPlay,
