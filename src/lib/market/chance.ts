@@ -790,6 +790,20 @@ export function calculatePlayerPropMean(
     case "points":
       // NHL Points: (TOI Share Baseline) * 0.8 expected game involvement rate
       return baseline.targetShare * 0.8 * baseline.epaPerPlay;
+
+case "points_nba":
+      // NBA Points: (Expected Minutes) * (Usage Shot Rate) * Efficiency multiplier
+      // baseline.targetShare * 48 gives projected minutes
+      const projectedMinutes = baseline.targetShare * 48;
+      return projectedMinutes * baseline.epaPerPlay * 1.85;
+
+    case "rebounds":
+      // NBA Rebounds: Expected Minutes * baseline rebound rate (~0.22 per minute)
+      return (baseline.targetShare * 48) * 0.22;
+
+    case "assists":
+      // NBA Assists: Expected Minutes * baseline assist rate (~0.16 per minute)
+      return (baseline.targetShare * 48) * 0.16;
       
     default:
       return 0;
