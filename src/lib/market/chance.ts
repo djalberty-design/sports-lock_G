@@ -746,3 +746,44 @@ export function priceContinuousPlayerProp(
     underProb: underProb
   };
 }
+/**
+ * Calculates the expected volume for a player prop based on team pace and target share.
+ * Translates underlying volume into a mathematical mean for the CDF.
+ */
+export function calculatePlayerPropMean(
+  propType: string,
+  baseline: PlayerVolumeBaseline,
+  teamExpectedPace: number
+): number {
+  if (!baseline) return 0;
+  
+  // Convert the player's target share into expected raw volume based on the game environment
+  const expectedTargets = baseline.targetShare * teamExpectedPace;
+  
+  switch (propType.toLowerCase()) {
+    case "receptions":
+      // Standard 65% catch rate baseline adjusted by EPA
+      const expectedCatchRate = Math.max(0.4, Math.min(0.85, 0.65 + (baseline.epaPerPlay * 0.05)));
+      return expectedTargets * expectedCatchRate;
+      
+    case "receiving_yards":
+      // ~11.5 yards per reception baseline
+      const expectedReceptions = expectedTargets * 0.65;
+      return expectedReceptions * (11.5 + (baseline.epaPerPlay * 2));
+      
+    case "touchdowns":
+      // Red zone snap percentage heavily weights the touchdown Poisson mean
+      return (expectedTargets * 0.05) + (baseline.redZoneSnapPct * 0.4);
+      
+    case "strikeouts":
+      // Pitcher strikeouts: (K per Inning) * (Expected Innings)
+      return baseline.targetShare * baseline.epaPerPlay;
+      
+    case "total_bases":
+      // Batter bases: (Expected Plate Appearances) * (OBP Proxy) * 1.2 Extra Base modifier
+      return baseline.targetShare * baseline.epaPerPlay * 1.2;
+      
+    default:
+      return 0;
+  }
+}
