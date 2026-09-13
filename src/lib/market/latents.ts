@@ -1,7 +1,3 @@
-/**
- * Latent game state G: mu, pace, variance, style. Sides and totals are not
- * transforms of each other.
- */
 import { buildChance, type ChanceInput } from "./chance.ts";
 import { leagueTotal } from "./chance.ts";
 import { latentFromScores, type GameLatent } from "./sim.ts";
