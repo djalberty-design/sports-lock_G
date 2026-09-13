@@ -51,7 +51,6 @@ export function decimalToAmerican(dec: number): number {
   return Math.round(-100 / (dec - 1));
 }
 
-// Upgraded: Iterative Power Method to eliminate Favorite-Longshot Bias
 export function twoWayNoVig(oddsHome: number, oddsAway: number) {
   const pHome = americanToImplied(oddsHome);
   const pAway = americanToImplied(oddsAway);
@@ -768,7 +767,6 @@ function eventSeed(snapshot: DeskSnapshot, eventId: string, pWinH: number): stri
   return `${eventId}|${pWinH.toFixed(5)}|${quotes}`;
 }
 
-// Upgraded: Dynamic Blend Time-Decay and Sharp Action Ratio
 function dynamicBlend(
   sim: number | undefined, 
   pool: number | undefined, 
@@ -928,7 +926,6 @@ function applyEnsemble(rows: ScanRow[], snapshot: DeskSnapshot): ScanRow[] {
           clock: r.clock,
         });
         const isOver = r.side === "over" || /\bover\b/i.test(r.selection);
-        // Remaining G already rebuilt simFair. Keep leftover-total as the pool layer only.
         poolFair = isOver ? pOver : 1 - pOver;
       }
       
