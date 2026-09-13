@@ -111,9 +111,9 @@ export function BoardPage() {
       ) : null}
 
       <details className="paper-card overflow-x-auto p-0">
-        <summary className="cursor-pointer bg-wash px-4 py-3 text-sm font-medium text-ink">
-          Every delayed number on this board
-        </summary>
+<summary className="cursor-pointer bg-wash px-4 py-3 text-sm font-medium text-ink">
+  Every delayed number on this board (Wide Open)
+</summary>
         <table className="w-full min-w-[860px] text-left text-sm">
           <thead className="bg-wash text-muted">
             <tr>
