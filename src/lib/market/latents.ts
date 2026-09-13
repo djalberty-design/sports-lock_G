@@ -7,6 +7,7 @@ import { leagueTotal } from "./chance.ts";
 import { latentFromScores, type GameLatent } from "./sim.ts";
 import { applyLiveRemaining } from "./live-state.ts";
 import { applyVenueToMeans } from "./venues.ts";
+import { applyRestToMeans } from "./rest.ts";
 
 export type LiveLatentFields = {
   inPlay?: boolean;
@@ -47,6 +48,15 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
   latent.muH *= venueMeans.muH;
   latent.muA *= venueMeans.muA;
   if (venueMeans.note) latent.note = venueMeans.note;
+  const restMeans = applyRestToMeans(
+    input.sport,
+    { start: input.start, homeRestDays: input.homeRestDays, awayRestDays: input.awayRestDays },
+    latent.muH,
+    latent.muA,
+  );
+  latent.muH = restMeans.muH;
+  latent.muA = restMeans.muA;
+  if (restMeans.note) latent.note = [latent.note, restMeans.note].filter(Boolean).join(" ");
   const next = applyLiveRemaining(latent, {
     inPlay: input.inPlay,
     homeScore: input.homeScore,
