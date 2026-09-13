@@ -205,6 +205,60 @@ export async function getNhlPlayerVolume(eventId: string): Promise<PlayerVolumeB
 }
 
 /**
+ * NBA Player Volume Parser
+ * Extracts minutes played, shot attempts, and usage rate proxies from the free ESPN NBA summary.
+ */
+export async function getNbaPlayerVolume(eventId: string): Promise<PlayerVolumeBaseline[]> {
+  const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=${eventId}`;
+  
+  const { data } = await fetchWithWatchdog(url, (json) => {
+    const boxscore = json?.boxscore;
+    if (!boxscore || !boxscore.players) throw new Error("Missing NBA boxscore player data");
+
+    const baselines: PlayerVolumeBaseline[] = [];
+
+    for (const team of boxscore.players) {
+      const statsBlock = team.statistics?.[0];
+      if (!statsBlock) continue;
+
+      // Find indices for MIN and FGA in ESPN's stats table structure
+      const names: string[] = statsBlock.names || [];
+      const minIdx = names.indexOf("MIN");
+      const fgaIdx = names.indexOf("FGA") !== -1 ? names.indexOf("FGA") : names.indexOf("FG");
+
+      for (const athlete of statsBlock.athletes || []) {
+        const stats = athlete.stats;
+        if (!stats) continue;
+
+        const minutes = Number(stats[minIdx] || 0);
+        // Skip bench warmers playing negligible time
+        if (minutes < 5) continue;
+
+        const fgRaw = String(stats[fgaIdx] || "0-0");
+        const attempts = Number(fgRaw.includes("-") ? fgRaw.split("-")[1] : fgRaw) || 0;
+
+        // Minutes share of 48-min game (~32 min starter = 0.66)
+        const minuteShare = minutes / 48.0;
+        // Shot rate per minute as a proxy for offensive usage
+        const shotRate = minutes > 0 ? attempts / minutes : 0.3;
+
+        baselines.push({
+          playerId: athlete.athlete.id,
+          playerName: athlete.athlete.displayName,
+          targetShare: minuteShare, // targetShare hijacked for projected minutes share
+          routeParticipation: 0,
+          redZoneSnapPct: 0,
+          epaPerPlay: shotRate // epaPerPlay hijacked for offensive usage rate
+        });
+      }
+    }
+    return baselines;
+  }, "ESPN NBA Summary");
+
+  return data ?? [];
+}
+
+/**
  * Advanced Process Metrics (EPA / xwOBA) Stub
  */
 export async function getAdvancedProcess(sport: string, teamId: string): Promise<TeamLooks | undefined> {
