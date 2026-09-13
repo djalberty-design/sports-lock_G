@@ -14,6 +14,7 @@ import { applyRecencyToMeans } from "./recency-g.ts";
 import { applySplitsToMeans } from "./splits-g.ts";
 import { applyMatchupToMeans } from "./matchup-g.ts";
 import { capLatentToClose } from "./g-cap.ts";
+import { applyOfficialsToMeans, type OfficialPosting } from "./officials.ts";
 
 export type LiveLatentFields = {
   inPlay?: boolean;
@@ -21,6 +22,7 @@ export type LiveLatentFields = {
   awayScore?: number;
   period?: string;
   clock?: string;
+  officials?: OfficialPosting[];
 };
 
 export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?: number } & LiveLatentFields): {
@@ -58,7 +60,8 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
   let chaos = Math.max(0, Math.min(0.22, (total - leagueTotal(input.sport)) / (leagueTotal(input.sport) * 4)));
   if (!venueMeans.enclosed && input.weatherWind != null && input.weatherWind >= 20) chaos += 0.05;
   if (!venueMeans.enclosed && input.weatherPrecip != null && input.weatherPrecip >= 40) chaos += 0.03;
-  chaos = Math.min(0.28, chaos + avail.chaosAdd);
+  const officialMeans = applyOfficialsToMeans({ sport: input.sport, officials: input.officials }, 1, 1);
+  chaos = Math.min(0.28, chaos + avail.chaosAdd + officialMeans.chaosAdd);
   const latent = latentFromScores({
     eventId: input.eventId,
     sport: input.sport,
@@ -105,9 +108,9 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
     1,
     1,
   );
-  latent.muH *= venueMeans.muH * restMeans.muH * avail.muH * processMeans.muH * recencyMeans.muH * splitMeans.muH * matchupMeans.muH;
-  latent.muA *= venueMeans.muA * restMeans.muA * avail.muA * processMeans.muA * recencyMeans.muA * splitMeans.muA * matchupMeans.muA;
-  const note = [venueMeans.note, restMeans.note, avail.note, processMeans.empty ? undefined : processMeans.note, recencyMeans.empty ? undefined : recencyMeans.note, splitMeans.empty ? undefined : splitMeans.note, matchupMeans.empty ? undefined : matchupMeans.note].filter(Boolean).join(" ");
+  latent.muH *= venueMeans.muH * restMeans.muH * avail.muH * processMeans.muH * recencyMeans.muH * splitMeans.muH * matchupMeans.muH * officialMeans.muH;
+  latent.muA *= venueMeans.muA * restMeans.muA * avail.muA * processMeans.muA * recencyMeans.muA * splitMeans.muA * matchupMeans.muA * officialMeans.muA;
+  const note = [venueMeans.note, restMeans.note, avail.note, processMeans.empty ? undefined : processMeans.note, recencyMeans.empty ? undefined : recencyMeans.note, splitMeans.empty ? undefined : splitMeans.note, matchupMeans.empty ? undefined : matchupMeans.note, officialMeans.empty ? undefined : officialMeans.note].filter(Boolean).join(" ");
   if (note) latent.note = note;
   const capped = capLatentToClose(latent);
   const next = applyLiveRemaining(capped, {
