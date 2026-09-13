@@ -14,6 +14,8 @@ export type ChanceLayer = {
 
 import { analyzeScores, earlySeasonDamp, ewmaWeights, formTrend, splitByVenue, vsOpponent } from "./form.ts";
 import { defenseAllowed, processFromLooks, underlyingOffense, underlyingPitch, type TeamLooks } from "./looks.ts";
+import { lookupVenue, weatherAtVenue } from "./venues.ts";
+import { restEffect } from "./rest.ts";
 
 export type FormGame = {
   date?: string;
@@ -254,63 +256,6 @@ export function overProb(mean: number, line: number, sport: string): number {
   return invLogit(logit(1 - normalCdf(z)), 0.02, 0.98);
 }
 
-export function poissonCdf(k: number, lambda: number): number {
-  if (lambda <= 0) return 1;
-  if (k < 0) return 0;
-  const cap = Math.min(Math.floor(k), 80);
-  let term = Math.exp(-lambda);
-  let sum = term;
-  for (let i = 1; i <= cap; i++) {
-    term *= lambda / i;
-    sum += term;
-    if (term < 1e-12) break;
-  }
-  return Math.min(1, sum);
-}
-
-export function poissonOver(lambda: number, line: number): number {
-  const k = Math.floor(line);
-  return invLogit(logit(1 - poissonCdf(k, Math.max(0.02, lambda))), 0.06, 0.94);
-}
-
-const PARK_RUNS: Record<string, number> = {
-  "coors field": 1.15,
-  "great american ball park": 1.08,
-  "yankee stadium": 1.05,
-  "fenway park": 1.04,
-  "citizens bank park": 1.04,
-  "globe life field": 1.03,
-  "guaranteed rate field": 1.03,
-  "camden yards": 1.02,
-  "wrigley field": 1.02,
-  "truist park": 1.02,
-  "rogers centre": 1.02,
-  "chase field": 1.01,
-  "progressive field": 1.01,
-  "minute maid park": 0.98,
-  "busch stadium": 0.97,
-  "angel stadium": 0.97,
-  "dodger stadium": 0.96,
-  "pnc park": 0.96,
-  "kauffman stadium": 0.96,
-  "loandepot park": 0.96,
-  "citi field": 0.95,
-  "comerica park": 0.95,
-  "tropicana field": 0.94,
-  "petco park": 0.92,
-  "t-mobile park": 0.92,
-  "oracle park": 0.9,
-};
-
-function parkFactor(venue?: string): number | null {
-  if (!venue) return null;
-  const key = venue.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-  for (const [name, f] of Object.entries(PARK_RUNS)) {
-    if (key.includes(name)) return f;
-  }
-  return null;
-}
-
 function formBlock(lastFive: FormBlock[] | undefined, team: string): FormBlock | undefined {
   if (!lastFive?.length) return undefined;
   const n = team.toLowerCase();
@@ -330,7 +275,6 @@ function recencyWp(block?: FormBlock): number | null {
   return results.reduce((s, r, i) => s + (r === "W" ? 1 : 0) * (w[i] ?? 0), 0);
 }
 
-// Upgraded Dynamic EWMA: Adjusts for Opponent Defense
 function dynamicMarginWp(block: FormBlock | undefined, sport: string): number | null {
   const games = block?.games?.filter((g) => g.pf != null && g.pa != null) ?? [];
   if (games.length < 3) return null;
@@ -339,9 +283,7 @@ function dynamicMarginWp(block: FormBlock | undefined, sport: string): number | 
   let weightSum = 0;
   
   games.slice(0, 10).forEach((g, i) => {
-    // Standard exponential decay (lambda = 0.82)
     let weight = Math.pow(0.82, i);
-    // Depreciate weight if opponent defense rating is poor (inflated stats)
     if (g.oppDefRating && g.oppDefRating > 1.05) {
       weight *= 0.75;
     }
@@ -353,22 +295,6 @@ function dynamicMarginWp(block: FormBlock | undefined, sport: string): number | 
   const avgMargin = totalMargin / weightSum;
   const z = avgMargin / (marginSigma(sport) * Math.sqrt(1 + 1 / Math.min(10, games.length)));
   return invLogit(logit(normalCdf(z)));
-}
-
-function restDays(block: FormBlock | undefined, start?: string): number | undefined {
-  if (!start) return undefined;
-  const dates = (block?.games ?? []).map((g) => g.date).filter((d): d is string => Boolean(d));
-  if (!dates.length) return undefined;
-  const last = dates
-    .map((d) => new Date(d).getTime())
-    .filter((t) => Number.isFinite(t))
-    .sort((a, b) => b - a)[0];
-  if (last == null) return undefined;
-  const startMs = new Date(start).getTime();
-  if (!Number.isFinite(startMs)) return undefined;
-  const days = (startMs - last) / 86400_000;
-  if (days < 0.15 || days > 21) return undefined;
-  return days;
 }
 
 function crowdPrecision(volume: number | undefined, spread: number | undefined, base: number): number {
@@ -621,6 +547,41 @@ export function buildChance(input: ChanceInput): ChanceReport | null {
       family: "model",
       note: "Dynamic EWMA adjusting for opponent defense.",
     });
+  }
+
+  const rEffect = restEffect({ sport, start: input.start, homeRestDays: input.homeRestDays, awayRestDays: input.awayRestDays });
+  if (!rEffect.empty) {
+    pushLayer(layers, {
+      id: "rest",
+      label: "Rest / schedule",
+      home: rEffect.layerHome,
+      precision: rEffect.precision,
+      family: "context",
+      note: rEffect.note,
+    });
+  } else {
+    pushEmpty(layers, "rest", "Rest / schedule", "Looked up rest from the live log. Empty look.");
+  }
+
+  if (sport === "MLB") {
+    const park = lookupVenue(input.venue, sport);
+    const pf = park?.runs ?? park?.hits ?? 1;
+    if (park != null && pf !== 1) {
+      const betterHome = input.homeEra != null && input.awayEra != null ? input.homeEra < input.awayEra : (homeWp ?? 0.5) > (awayWp ?? 0.5);
+      const towardBetter = pf < 1 ? 0.035 : pf > 1 ? -0.02 : 0;
+      const p = invLogit((betterHome ? 1 : -1) * towardBetter);
+      pushLayer(layers, {
+        id: "park",
+        label: "Ballpark",
+        home: p,
+        precision: Math.abs(pf - 1) >= 0.04 ? 1.15 : 0.5,
+        family: "context",
+        note: `${park.id} factor ${pf.toFixed(2)}. Extreme parks add chaos.`,
+        thin: Math.abs(pf - 1) < 0.04,
+      });
+    } else {
+      pushEmpty(layers, "park", "Ballpark", "Looked up the venue factor. Park not posted on this event.");
+    }
   }
 
   const process = processFromLooks(sport, input.homeLooks, input.awayLooks);
