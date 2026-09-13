@@ -7,9 +7,9 @@ import { useDeskDecision } from "@/lib/market/use-board";
 import { suggestContests } from "@/lib/market/dfs";
 import { applyGameLean, lineupExport, optimizeSlate, teamLeansFromBoard } from "@/lib/market/slate";
 import { cashFloor, gppCeiling, isChalk, showdownPoints, showdownSalary } from "@/lib/market/dfs-scoring";
+import { DFS_DISCLAIMER, chalkPivots, valueBridgeNotes } from "@/lib/market/dfs-law";
 import { formatBetUsd } from "@/lib/copy";
 import { formatUsd } from "@/lib/utils";
-import { BRAND } from "@/lib/brand";
 import type { InactiveAlert, SalaryShift, SlateLineup } from "@/lib/market/types";
 
 export function DfsDesk({ variant = "full" }: { variant?: "full" | "today" }) {
@@ -53,11 +53,7 @@ export function DfsDesk({ variant = "full" }: { variant?: "full" | "today" }) {
         </p>
       </header>
 
-      <p className="rounded-md bg-wash px-4 py-3 text-sm text-ink/80">
-        18+ Florida daily fantasy. DraftKings Fantasy salary-cap only — not a Hard Rock Bet ticket and not DraftKings or FanDuel
-        sportsbook. We never submit the lineup. Call <span className="font-mono text-gold">{BRAND.helpline}</span> if play is no
-        longer fun.
-      </p>
+      <p className="rounded-md bg-wash px-4 py-3 text-sm text-ink/80">{DFS_DISCLAIMER}</p>
 
       <PhotoFirstNote venue="DraftKings Fantasy" />
 
@@ -71,6 +67,7 @@ export function DfsDesk({ variant = "full" }: { variant?: "full" | "today" }) {
 
       <SalaryShiftBanner shifts={scored?.salaryShifts ?? slate?.salaryShifts} />
       <InactiveBanner alerts={scored?.inactiveAlerts} />
+      <ValueBridge players={scored?.players ?? slate?.players} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <article className="paper-card p-5">
@@ -251,5 +248,21 @@ function LineupCard({ title, kicker, lineup }: { title: string; kicker: string; 
         </a>
       </div>
     </article>
+  );
+}
+
+function ValueBridge({ players }: { players?: import("@/lib/market/types").SlatePlayer[] }) {
+  const list = players ?? [];
+  const notes = [...valueBridgeNotes(list), ...chalkPivots(list)];
+  if (!notes.length) return null;
+  return (
+    <div className="rounded-md bg-wash px-4 py-3 text-sm text-ink/80">
+      <p className="stamp text-gold">Value bridge · Fantasy only</p>
+      <ul className="mt-2 space-y-1">
+        {notes.map((n) => (
+          <li key={n}>{n}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
