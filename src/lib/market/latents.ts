@@ -9,6 +9,7 @@ import { applyLiveRemaining } from "./live-state.ts";
 import { applyVenueToMeans } from "./venues.ts";
 import { applyRestToMeans } from "./rest.ts";
 import { applyAvailabilityToMeans } from "./availability.ts";
+import { applyProcessToMeans } from "./process-g.ts";
 
 export type LiveLatentFields = {
   inPlay?: boolean;
@@ -64,9 +65,22 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
     marketHome: input.oddsHome,
     chaos,
   });
-  latent.muH *= venueMeans.muH * restMeans.muH * avail.muH;
-  latent.muA *= venueMeans.muA * restMeans.muA * avail.muA;
-  const note = [venueMeans.note, restMeans.note, avail.note].filter(Boolean).join(" ");
+  const processMeans = applyProcessToMeans(
+    {
+      sport: input.sport,
+      homeLooks: input.homeLooks,
+      awayLooks: input.awayLooks,
+      homePf: input.homePf,
+      homePa: input.homePa,
+      awayPf: input.awayPf,
+      awayPa: input.awayPa,
+    },
+    1,
+    1,
+  );
+  latent.muH *= venueMeans.muH * restMeans.muH * avail.muH * processMeans.muH;
+  latent.muA *= venueMeans.muA * restMeans.muA * avail.muA * processMeans.muA;
+  const note = [venueMeans.note, restMeans.note, avail.note, processMeans.empty ? undefined : processMeans.note].filter(Boolean).join(" ");
   if (note) latent.note = note;
   const next = applyLiveRemaining(latent, {
     inPlay: input.inPlay,
