@@ -1,10 +1,12 @@
 import type { ParlayCandidate, ParlayCorrelation, ParlayMix, ScanRow } from "./types.ts";
+import { comboHasBlockedLeg } from "./combo-law.ts";
 
 export function filterCatalog(
   items: ParlayCandidate[],
   opts: { legs?: number | "all"; mix?: ParlayMix | "all"; sport?: string },
 ): ParlayCandidate[] {
   return items.filter((p) => {
+    if (comboHasBlockedLeg(p)) return false;
     if (opts.legs && opts.legs !== "all" && p.legs.length !== opts.legs) return false;
     if (opts.mix && opts.mix !== "all" && (p.mix ?? mixOf(p)) !== opts.mix) return false;
     if (opts.sport && opts.sport !== "ALL") {

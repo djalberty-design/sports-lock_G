@@ -5,6 +5,7 @@ import { buildDeskPicks, type DeskPicks, type DeskPick } from "./picks.ts";
 import type { RankSettings } from "../desk-settings.ts";
 import { DESK_VERSION } from "./rules.ts";
 import { floridaBlockReason, isFloridaBlocked } from "./florida.ts";
+import { comboHasBlockedLeg, keepLegalCombos } from "./combo-law.ts";
 
 export type RankRequest = {
   id: number;
@@ -30,11 +31,24 @@ function applyFloridaLaw(scan: ScanBundle): ScanBundle {
       reason: floridaBlockReason(r) ?? r.reason,
     };
   });
-  return { ...scan, rows };
+  const keep = keepLegalCombos;
+  const bestTwo = scan.bestTwo && !comboHasBlockedLeg(scan.bestTwo) ? scan.bestTwo : null;
+  const bestSpicy = scan.bestSpicy && !comboHasBlockedLeg(scan.bestSpicy) ? scan.bestSpicy : null;
+  return {
+    ...scan,
+    rows,
+    bestTwo,
+    bestSpicy,
+    topTwos: keep(scan.topTwos),
+    topThrees: keep(scan.topThrees),
+    topFours: keep(scan.topFours),
+    topSgp: keep(scan.topSgp),
+  };
 }
 
 function pickLooksBlocked(p: DeskPick): boolean {
   const row = p.row;
+  if (p.parlay && comboHasBlockedLeg(p.parlay)) return true;
   return isFloridaBlocked({
     sport: row?.sport ?? p.sport,
     isProp: row?.isProp || p.bucket === "prop",
