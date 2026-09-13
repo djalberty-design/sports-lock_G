@@ -36,8 +36,9 @@ export function runRankJob(req: RankRequest): RankResult {
 
 /** Fingerprint of posted prices so ranking ignores clock-only refreshes. */
 export function oddsFingerprint(snapshot: DeskSnapshot): string {
-  return snapshot.quotes
+  const quotes = snapshot.quotes
     .map((q) => `${q.eventId}:${q.marketType}:${q.side}:${q.price}:${q.point ?? ""}:${q.inPlay ? 1 : 0}`)
     .sort()
     .join("|");
+  return `${snapshot.quotes.length}#${quotes}`;
 }

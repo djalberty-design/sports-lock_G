@@ -80,7 +80,7 @@ export function meanHit(paths: Path[], hit: (p: Path) => boolean): SimPrice {
     if (hit(p)) yes += p.w;
   }
   const p = w > 0 ? yes / w : 0.5;
-  return { p, n: paths.length, se: Math.sqrt(p * (1 - p) / Math.max(1, paths.length)), ran: paths.length >= 400 };
+  return { p, n: paths.length, se: Math.sqrt((p * (1 - p)) / Math.max(1, paths.length)), ran: paths.length >= 400 };
 }
 
 export function simWin(paths: Path[]): SimPrice {
@@ -130,14 +130,17 @@ export function jointHit(paths: Path[], legs: Array<{ marketType: string; side: 
   return meanHit(paths, (p) => legs.every((leg) => pathHits(p, leg)));
 }
 
+/** v7: 50% market + 30% simulation + 20% Bayesian pool. Missing layer = weight 0, renormalize. Never invent a 50/50 look. */
+export const FAIR_BLEND = { market: 0.5, sim: 0.3, pool: 0.2 } as const;
+
 export function blendFair(sim: number | undefined, pool: number | undefined, market: number | undefined): number {
-  const s = sim != null && Number.isFinite(sim) ? sim : undefined;
-  const p = pool != null && Number.isFinite(pool) ? pool : undefined;
-  const m = market != null && Number.isFinite(market) ? market : undefined;
-  if (s != null && p != null && m != null) return 0.5 * s + 0.3 * p + 0.2 * m;
-  if (s != null && p != null) return 0.55 * s + 0.45 * p;
-  if (s != null && m != null) return 0.55 * s + 0.45 * m;
-  return s ?? p ?? m ?? 0.5;
+  const parts: { w: number; v: number }[] = [];
+  if (market != null && Number.isFinite(market)) parts.push({ w: FAIR_BLEND.market, v: market });
+  if (sim != null && Number.isFinite(sim)) parts.push({ w: FAIR_BLEND.sim, v: sim });
+  if (pool != null && Number.isFinite(pool)) parts.push({ w: FAIR_BLEND.pool, v: pool });
+  if (!parts.length) return 0.5;
+  const w = parts.reduce((s, p) => s + p.w, 0);
+  return parts.reduce((s, p) => s + (p.w / w) * p.v, 0);
 }
 
 export function latentFromScores(opts: {

@@ -18,9 +18,7 @@ test("same seed yields the same path stream", () => {
   assert.equal(a.length, b.length);
   assert.equal(a[0]!.h, b[0]!.h);
   assert.equal(a[0]!.a, b[0]!.a);
-  const wa = simWin(a).p;
-  const wb = simWin(b).p;
-  assert.equal(wa, wb);
+  assert.equal(simWin(a).p, simWin(b).p);
 });
 
 test("desk seed is a pure function of version + snapshot + event", () => {
@@ -47,11 +45,18 @@ test("NFL paths put extra mass on 3 and 7", () => {
   assert.ok(key > 100, `expected 3/7 spike, got ${key}`);
 });
 
-test("blendFair without sim is closed form — never a fake sim %", () => {
-  assert.equal(blendFair(undefined, 0.6, 0.55), 0.6);
-  assert.ok(Math.abs(blendFair(undefined, 0.6, 0.55) - 0.6) < 1e-9);
+test("blendFair is 50% market + 30% sim + 20% pool", () => {
+  assert.equal(blendFair(0.4, 0.7, 0.6), 0.5 * 0.6 + 0.3 * 0.4 + 0.2 * 0.7);
 });
 
+test("blendFair missing sim renormalizes market + pool — never invents a 50/50 sim look", () => {
+  const expected = (0.5 * 0.55 + 0.2 * 0.6) / 0.7;
+  assert.ok(Math.abs(blendFair(undefined, 0.6, 0.55) - expected) < 1e-9);
+});
+
+test("blendFair with no looks is 0.5 only because nothing ran", () => {
+  assert.equal(blendFair(undefined, undefined, undefined), 0.5);
+});
 
 test("sim cover and over are path statistics", () => {
   const g = latentFromScores({ eventId: "mlb-1", sport: "MLB", homeWin: 0.55, total: 8.5 });
