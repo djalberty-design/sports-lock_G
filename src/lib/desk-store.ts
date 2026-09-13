@@ -19,6 +19,7 @@ export type PlacePaperResult = { ok: true; ticket: PaperTicket } | { ok: false; 
 
 export type DeskState = {
   liveBankroll: number;
+  dfsBankroll: number; // Added DFS split
   unitPct: number;
   weeklyLossCapPct: number;
   stakeDollars: number;
@@ -56,6 +57,7 @@ export type DeskState = {
   pinnedPickId: string | null;
   markHydrated: () => void;
   setLiveBankroll: (n: number) => void;
+  setDfsBankroll: (n: number) => void; // Added DFS setter
   setStakeDollars: (n: number) => void;
   setWeekLossDollars: (n: number) => void;
   setGoalTarget: (n: number) => void;
@@ -109,6 +111,7 @@ export const useDeskStore = create<DeskState>()(
   persist(
     (set, get) => ({
       liveBankroll: DEFAULTS.liveBankroll,
+      dfsBankroll: 0, // Initialized
       unitPct: DEFAULTS.unitPct,
       weeklyLossCapPct: DEFAULTS.weeklyLossCapPct,
       stakeDollars: DEFAULTS.liveBankroll * DEFAULTS.unitPct,
@@ -153,6 +156,7 @@ export const useDeskStore = create<DeskState>()(
           unitPct: v > 0 ? s.stakeDollars / v : s.unitPct,
         });
       },
+      setDfsBankroll: (n) => set({ dfsBankroll: Math.max(0, n) }), // DFS Setter logic
       setStakeDollars: (n) => {
         const v = Math.max(0, Math.round(n * 100) / 100);
         const pile = get().liveBankroll;
@@ -357,7 +361,7 @@ export const useDeskStore = create<DeskState>()(
       name: BRAND.persist,
       storage: createJSONStorage(() => localStorage),
       skipHydration: true,
-      version: 5,
+      version: 6, // Bumped for migration
       migrate: (persisted, version) => {
         const p = (persisted ?? {}) as Record<string, unknown>;
         if (version < 2) {
@@ -376,10 +380,14 @@ export const useDeskStore = create<DeskState>()(
           if (!Array.isArray(p.hiddenPickIds)) p.hiddenPickIds = [];
           if (p.pinnedPickId === undefined) p.pinnedPickId = null;
         }
+        if (version < 6) { // Migrated DFS state
+          if (typeof p.dfsBankroll !== "number") p.dfsBankroll = 0;
+        }
         return p as DeskState;
       },
       partialize: (s) => ({
         liveBankroll: s.liveBankroll,
+        dfsBankroll: s.dfsBankroll, // Persist DFS split
         unitPct: s.unitPct,
         weeklyLossCapPct: s.weeklyLossCapPct,
         stakeDollars: s.stakeDollars,
