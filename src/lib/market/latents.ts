@@ -5,8 +5,17 @@
 import { buildChance, type ChanceInput } from "./chance.ts";
 import { leagueTotal } from "./chance.ts";
 import { latentFromScores, type GameLatent } from "./sim.ts";
+import { applyLiveRemaining } from "./live-state.ts";
 
-export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?: number }): {
+export type LiveLatentFields = {
+  inPlay?: boolean;
+  homeScore?: number;
+  awayScore?: number;
+  period?: string;
+  clock?: string;
+};
+
+export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?: number } & LiveLatentFields): {
   latent: GameLatent;
   poolHome?: number;
   layers: ReturnType<typeof buildChance> extends infer R ? R : never;
@@ -36,5 +45,12 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
       latent.note = "Wind 12–19 mph: pass mean ×0.96, rush ×1.03, total −1.";
     }
   }
-  return { latent, poolHome: report?.home, layers: report };
+  const next = applyLiveRemaining(latent, {
+    inPlay: input.inPlay,
+    homeScore: input.homeScore,
+    awayScore: input.awayScore,
+    period: input.period,
+    clock: input.clock,
+  });
+  return { latent: next, poolHome: report?.home, layers: report };
 }
