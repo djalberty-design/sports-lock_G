@@ -1,0 +1,57 @@
+ONE PASS — DESK_VERSION stays 2026.09.09-world. Do not bump. Do not restyle. Do not start DraftKings DFS. Do not invent a Statcast/EPA/xG number to avoid Looked.
+
+Living law is SPORTS_LOCK_ALGORITHM_v2.md (attach it). Stamps without a file are Looked.
+
+Already accepted (do not undo)
+- Five desks. Fantasy is a placeholder, not a Florida sportsbook fill.
+- Safest default. Ribbon parlays sort Safest.
+- The Call stays off unless quality ≥ 0.72 AND process Ran AND not live/parlay/period AND desk is not >1 pt under the book with no +edge.
+- Popular names mains even when there is no Call.
+- /parlay Load this ticket for Cubs +1.5 + Nationals +1.5 opens those two spreads at the same \~37% as the card (URL shape /ticket?id=p2__…).
+- 4-leg is Catalog / fun money only.
+- Photo target is Hard Rock Bet Florida. Camera + library. OCR editable before Log.
+- College player legs cannot be added.
+- Never 100%. Never “lock” as certainty. This site never places a bet.
+
+Fix these live product bugs
+1. Same slip, one number. Card 37% vs sticky “39% they all hit” on
+   /ticket?id=p2__espn-MLB-401816861__spread__away__espn-MLB-401816867__spread__away
+   is a defect. Displayed combined % must match the card, the slip header, and the sticky.
+2. Quality label. That slip prints QUALITY 0.70 and badge LOW QUALITY. One scale: High ≥0.72, Med 0.55–0.71, Low <0.55.
+3. Custom builder. When Your ticket has ≥2 legal legs, show Open ticket. It must open the same parlay ticket page (per-leg full desk + combined). Load this ticket must also write those legs into Your ticket so Back is not empty.
+4. /parlay default list must not go empty while deep links still resolve. If a filter is empty, say which filter and how to clear it. Never “no ranked parlays” when All/Any mix has 2-leg mains on the board.
+5. Games empty state must name the reason (this sport / this horizon / feed Looked). Do not mention DraftKings sportsbook.
+
+World algorithm — prove or Looked, no slogan
+For each item: live URL + what the page prints. File names alone are not evidence.
+
+B. Process
+- MLB ticket must print Process Ran · Baseball Savant (or Statcast) when the file exists.
+- If the ESPN/Savant pull is empty tonight, keep Process Looked. Do not feed ISO/ERA in as Statcast.
+- NFL EPA / NHL xG / college KenPom-SP+ same rule.
+- The Call stays down while MLB process is Looked.
+
+C. Usage U
+- A listed-out skill player must move leftover opportunity onto the next man when a depth chart exists (RB snap share, lineup slot).
+- Count-of-outs only is not usage. If no depth chart, stamp Usage Looked and do not invent a backup.
+
+D. Live S — after first pitch (\~6:40 ET Mets/Marlins)
+- /live must show at least one remaining-stat / leftover-mean ticket on an in-play game.
+- Missing downs / outs / strength → that micro row stands down in public.
+- No The Call. No ribbon leg.
+
+E. Joint-path
+- One SAME-GAME 2-leg main (example they already cited: Astros ML + Astros +1.5) must print JOINT-PATH · SHARED-LATENT on the slip, not the near-independent product line.
+- Cross-game slips stay near-independent. Haircut table only as Thin fallback.
+
+F. Unknown market
+- A raw Hard Rock name that is not in the registry stands down and logs the string. Do not price a cousin. Parser TBA is not “unknown.”
+
+Also keep
+- Seeded sim: same snapshot + pin → same %. Sim vs pool on the ticket when the sim emitted. Closed form ⇒ quality cap 0.64 and no fake sim %.
+- Research + quality < 0.55 cannot be Popular/Safest #1.
+- No DK/FD sportsbook fills. No scrape. No auto-bet.
+
+Reply format
+Table: item | done / Looked / still broken | live URL | one sentence.
+Do not write “fully incorporated.”

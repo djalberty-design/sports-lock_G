@@ -1,0 +1,55 @@
+DELTA PASS — finish holes against DESK_VERSION 2026.09.09-world. Do not rewrite the desk. Do not start DraftKings DFS.
+
+The live site already has: five-desk nav, mood, The Call as a single, Book/Desk/Edge, HR-FL tape stamps, sim vs pool on the ticket page, Live desk copy, camera+library on Log, Fantasy placeholder on /slate, college player block, 2026.09.09-world on ticket breakdowns.
+
+Fix only what is still wrong.
+
+1. Copy that still lies
+- Home: kill “the four desks.” Desks are AI Picks, Games, Parlay, Live, Log. Fantasy is a labeled placeholder, not a live Hard Rock product.
+- Home / Games / Log photo banners: stop saying photograph “Hard Rock or DraftKings” as if DK sportsbook were a Florida fill. Photo target is Hard Rock Bet Florida. DK Fantasy is /slate only and stays off this pass.
+- Parlay ranked strip: 4-leg is Catalog / “fun money” only. Gold ribbon stays 2- or 3-leg mains. Keep the 4-leg filter under Catalog, not on the badge.
+- Default mood on AI Picks = Safest (user wants hittable tickets). Best value stays available. Ribbon parlays always sort Safest.
+
+2. More / About is 404
+- Ship /more (or whatever the header “More” already points at).
+- Show DESK_VERSION 2026.09.09-world, 21+ / 1-800-GAMBLER, “this site never places a bet,” Florida-only, photo = lock the number not a lock pick.
+- Settings that persist: default mood, unit %, hide college, hide live.
+
+3. Visual honesty
+- Hit / Miss must not be green/red alone. Add labels + a second cue (icon or gold/slate).
+- Games empty state must say why (off-slate / this filter / tape Looked) and how to clear. Tonight’s MLB board being full while a filter reads “no game tipping” is the bug.
+
+4. Algorithm must Ran, not only stamp
+Ticket breakdown already lists process / usage / sim / live-state / CLV. That is not enough. On a real ticket the layer row must show a source and Ran or Looked:
+- MLB: Statcast or Savant when the file exists, else Looked.
+- NFL/NCAAF: EPA / success / CPOE or cfbfastR/SP+ when posted, else Looked.
+- NBA/NCAAB: four factors / usage or KenPom-family when posted, else Looked.
+- NHL: xG / GSAx when posted, else Looked.
+Never invent a number to avoid Looked.
+If the generative sim cannot emit a ticket, use the closed form and cap quality at 0.64. Do not print a fake sim %.
+
+5. Parlay engine vs copy
+- Same-game mains: joint paths, not the old haircut, when both legs are registered.
+- Haircut table is fallback only and must stamp Thin + fallback-haircut.
+- Stop saying “haircut so correlated legs…” on the ribbon if the slip is actually near-independent joint chance. Print the flag that matches the engine.
+
+6. Live
+- When a game is in-play, Live must list remaining-stat tickets from state S (score, clock, downs/outs/strength).
+- Missing critical S → that micro row stands down.
+- No The Call. No ribbon leg.
+
+7. Do not
+- Do not scrape Hard Rock.
+- Do not use DK/FD sportsbook as a Florida fill.
+- Do not emit college player tickets.
+- Do not build the DFS optimizer.
+- Do not print 100% or “lock” as certainty.
+- Do not bump DESK_VERSION unless a ranking rule changes. Copy/About fixes do not bump the pin.
+
+Acceptance
+- Header More does not 404 and shows 2026.09.09-world.
+- No “DraftKings” on Hard Rock photo CTAs.
+- Home does not advertise four desks or a live Fantasy engine.
+- Ribbon has no 4-leg gold badge.
+- At least one MLB ticket tonight shows process as Ran with a named source, or honest Looked.
+- Same-game 2-leg mains show joint-path (not silent 0.55 haircut) or an explicit Thin fallback stamp.

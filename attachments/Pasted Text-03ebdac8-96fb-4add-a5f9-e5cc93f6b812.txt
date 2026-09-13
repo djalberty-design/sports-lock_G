@@ -1,0 +1,61 @@
+BUG + FEATURE — /parlay “Load this ticket” is dead.
+
+Repro
+- Phone or desktop: https://sports-lock.grok.me/parlay
+- A ranked card (example: Nationals +1.5 + Cubs +1.5, 37%) has a gold button “Load this ticket”.
+- Tap / click does nothing. No navigation, no builder fill, no ticket page.
+- DESK_VERSION stays 2026.09.09-world. Do not bump the pin. Do not start DFS.
+
+What “Load this ticket” must do
+1. Load those exact legs into the Parlay builder (Your ticket).
+2. Immediately open a Parlay ticket page (example route: /ticket?id=parlay|… or /parlay/ticket?…). Same pattern as a single /ticket page. Do not stay on the list with a silent state change.
+3. The same page must work for:
+   - AI ribbon 2-leg and 3-leg mains
+   - Catalog / fun-money 4-leg
+   - Custom builder mixes (same game, same sport, cross sport, games + legal player props)
+   - A photographed Hard Rock FL slip after OCR confirm
+   Every combination gets the full stack. No short path.
+
+Parlay ticket page — required every time
+Header
+- Legs listed in order, sport, start time ET
+- Combined chance they all hit (cap 99%, never 100%)
+- Combined payout at the user’s unit (Hit $ / Miss $)
+- Book / Desk / Edge on the SLIP, not only per leg
+- Correlation flag that matches the engine: joint-path | near-independent | shared-latent | Thin fallback-haircut
+- Quality, tape stamp (HR-FL tape | photographed | research)
+- Not a lock. This site never places a bet.
+
+Combined block (run the full desk on the slip)
+- Joint chance from seeded paths when every leg is a registered market
+- If any leg cannot sim: closed form on that leg, quality cap 0.64 on the slip, no fake sim %
+- Haircut table only as fallback and must stamp Thin + fallback-haircut
+- Why the slip is or is not on the gold ribbon (2–3 main legs, floors, no live, no college player, no period 0.5)
+
+Per-leg block (every leg, no exceptions)
+For each leg, the same breakdown a single ticket gets:
+- Side, market, American number, chance, Book / Desk / Edge
+- Rules Ran / Thin / Looked
+- Latents G / U / S that apply
+- Process row with a named source when it Ran (MLB Statcast/Savant, etc.) or honest Looked
+- Sim vs pool when the sim actually ran
+- Deep link: “Open this leg” → existing single /ticket page
+
+Actions on that page
+- Photograph Hard Rock Bet Florida slip to lock juice (camera + library, confirm OCR)
+- Lock to Log
+- Remove a leg / add a leg and re-run combined immediately
+- Back to /parlay
+
+Rules
+- Florida Hard Rock only. College player legs cannot load. Live legs cannot load onto the ribbon; if the user forces one in the builder, combined quality is haircut and The Call is forbidden.
+- Same snapshot + seed → same combined ranking and same per-leg %.
+- Button label can stay “Load this ticket” or become “Open this ticket” — either is fine if it navigates.
+- If the parlay id is missing or a leg is unknown_market: stand that leg down, still open the page, say which leg could not price.
+
+Acceptance
+- Tap “Load this ticket” on Nationals +1.5 + Cubs +1.5 opens a ticket page in one gesture.
+- That page shows two per-leg algorithm blocks and one combined block.
+- Builder “Your ticket” contains those two legs if the user hits Back.
+- A custom 2-leg the user built also has an “Open ticket” control that opens the same page shape.
+- No dead buttons on ranked cards.

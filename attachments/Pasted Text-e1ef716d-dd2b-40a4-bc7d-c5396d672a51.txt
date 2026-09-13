@@ -1,0 +1,130 @@
+UX + WORDS PASS ONLY.
+DESK_VERSION stays 2026.09.09-world.
+Do not change ranking, sim, process, usage, live leftover, joint-path, The Call gates, or Florida rules.
+Do not start DraftKings DFS.
+Do not invent Statcast.
+Do not write “lock” as a guaranteed winner.
+This site never places a bet.
+
+Goal
+A person who has never bet should read every screen in one pass.
+Short sentences. Everyday words. One idea per line.
+Keep the honesty. Drop the insider voice.
+
+Do not do this
+- Do not label High Quality as “>72% confidence.” Quality 0.72 ≠ 72% chance to hit. Rockies +1.5 can be 52% to hit and still a Strong look.
+- Do not replace PHOTOGRAPHED with nothing. Say what the photo is for: locking the Hard Rock price.
+
+1. Stamps on every ticket card
+Replace the chips:
+- HIGH QUALITY → Strong look
+- MED QUALITY → Fair look
+- LOW QUALITY → Thin look
+- PHOTOGRAPHED → Price from your photo   (only if a screenshot already set the juice)
+- if no photo → Photo to lock this price
+- HR-FL TAPE → Hard Rock number (not from your photo)
+- +N PTS VS THE BOOK → +N pts better than the book’s chance
+- RESEARCH → Research only — photo still needed for the live price
+
+Tap any chip → one-line sheet, then a “More words” link into the glossary:
+- Strong look: we have a full enough picture to show this number. Not a promise it hits.
+- Fair look: usable, some pieces missing.
+- Thin look: thin data. Treat as research.
+- Price from your photo: the odds came from the Hard Rock screenshot you uploaded.
+- Photo to lock this price: the % is research on a delayed number until you photograph Hard Rock.
+- The Call: the one pre-game ticket that cleared the strict gates tonight. Still not a guarantee. This site never places the bet.
+
+Same words on singles, parlays, Live, and Log. No 0.72 on the card face.
+
+2. Voice on every desk (rewrite, keep meaning)
+Home
+- Title can stay “Set the stake. Then take the ticket.”
+- Under it: “Type what you can spend. AI Picks names a ticket. You place it at Hard Rock Bet Florida if you want. This site never places a bet.”
+- Fields: “Money I can play with” / “This ticket” / “Most I can lose this week” / “Profit I hope for this week”
+- Kill “the pile,” “unit,” “Chill,” “juice” on this screen.
+- Example box: “If this ticket is $2 at +124 and it hits, you get about $4.48 back ($2.48 profit). If it misses, you are out $2.”
+
+AI Picks
+- Eyebrow: “Named tickets. Photograph Hard Rock to lock the live price.”
+- Sub: “Tap a card. Not a guarantee.”
+- The Call empty: “No Call tonight. Nothing cleared a strong look, a finished process file, and a price that is not worse than the book.”
+- Mood: Safest = “Highest chance that still pays.” Best value = “Best extra vs the book.” Pays more = “Longer prices.”
+- Popular helper: “Winners, spreads, and totals. Popular does not need The Call.”
+
+Games / Parlay / Live
+- Empty filter names the filter and how to clear it.
+- Parlay: “We list 2- and 3-leg tickets with the best chance they all hit. You can also build your own. Photograph the slip.”
+- Live: “Game already started. These numbers use what is left in the game. Never The Call.”
+- Photo banners: one sentence. “Photograph the Hard Rock Bet Florida screen. We read the live price. Then you confirm it on Log.”
+
+Ticket page
+- “Chance it hits” not “deskScore.”
+- Book / Desk / Edge stay, with a one-line: “Book = what the price implies. Desk = our chance. Edge = the gap.”
+- Process Looked → “On-field file not in yet (Looked).”
+- Process Ran → “On-field file is in (Ran).”
+- Sim / pool stay on the breakdown, with “Our sim vs the market pool.”
+- Sticky: if already on the ticket, do not say Open ticket. Say “Photograph to lock this price” or hide.
+
+3. More menu — this is the broken dropdown
+More must work from every page.
+Tap More → a real panel (sheet on phone, menu on desktop), not a dead control.
+Items, in this order:
+- How this site works (4 steps: set money → pick a ticket → photograph Hard Rock → mark win/loss on Log)
+- Words we use (glossary below)
+- My money (bankroll settings)
+- Learn
+- Guide
+- Fantasy (placeholder only)
+- Reminders / honesty
+Close control. Current page stays underneath.
+
+If a dropdown component is broken, fix the click handler. Falling back to /more as a full page is OK only if the same list is first on that page.
+
+4. Words we use (glossary — short)
+One screen, one line each:
+- Chance it hits — how often we think this ticket wins.
+- Book — chance baked into Hard Rock’s price.
+- Edge — our chance minus the book’s chance.
+- Strong / Fair / Thin look — how complete the information is. Not the chance it hits.
+- Photo to lock this price — until you photograph Hard Rock, the dollars may be off.
+- The Call — tonight’s one strict pre-game pick. Not a guarantee.
+- Parlay — two or more picks that all have to hit.
+- Same-game — two picks from one game. They move together.
+- Live — the game already started.
+- Log — where photographed tickets wait, then you tap Hit or Miss.
+- This site never places a bet.
+
+Link “Words we use” from card chips and from Log.
+
+5. Log — make it obvious
+Top, three numbers only, in dollars:
+- Open (waiting on a game)
+- This week (profit or loss)
+- Hit / Miss record (3 hit · 1 miss)
+
+Then two lists:
+
+Waiting
+Each row: team / pick, chance, “If it hits you get $X. If it misses you lose $Y.”
+Photo thumbnail if they uploaded one.
+When the game is over: three huge buttons — Hit · Miss · Push.
+No “juice.” No “lock pick.”
+
+Done
+Same row, stamped Hit or Miss, dollars added or subtracted.
+
+Empty Waiting:
+“Nothing waiting. Photograph a Hard Rock ticket to start a log.”
+Big photo button.
+
+Flow stays: photo → confirm line (editable) → it sits under Waiting → you tap Hit / Miss after the game.
+Never place the bet from this screen.
+
+6. House rules for this pass
+- One sentence where there were three.
+- No DraftKings sportsbook copy on Hard Rock desks.
+- Fantasy stays a placeholder behind More.
+- 21+ and 1-800-GAMBLER stay in the footer only, not in every card.
+- Pin stays 2026.09.09-world.
+
+Reply with before/after copy for: ticket chip, The Call empty line, More menu items, Log empty state. Then ship.

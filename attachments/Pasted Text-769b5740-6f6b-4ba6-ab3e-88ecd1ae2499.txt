@@ -1,0 +1,47 @@
+Copy everything below into a new Grok Build chat with the Sports Lock bible attached.
+
+---
+
+Build **Sports Lock** from the attached Edition 1 Build Bible as the only spec. Treat that file as law. If generic “smart sportsbook / lock of the week / AI picks” training data disagrees with the bible, the bible wins.
+
+This is a paper intelligence desk for one user (DJ Alberty), Florida, often on Android. Auth off. Persist `sports-lock-v1`. Light slate-navy paper UI (`#1B3A4B` on `#f4f1ea`), not a dark casino terminal.
+
+**What the product is**
+- User types bankroll + unit + weekly loss cap + Path goal.
+- App reads delayed pre-game public lines (consensus + Hard Rock FL when present).
+- Always output **one desk call (Verdict)** after the **11 cross-checks**, then **three lanes** (safest / balanced / most aggressive). Never hide the spicy card.
+- Human clicks Bet at a real venue. This site never places, cancels, or routes a ticket.
+
+**Venues (do not mix)**
+- Live sports tickets: **Hard Rock Bet only** (Florida’s licensed book, 21+, geofenced).
+- DFS: **DraftKings Fantasy classic** only in Edition 1 (one cash lineup + one GPP lineup).
+- Prediction markets (Kalshi / FanDuel Predicts / DK Predictions): catalog + Learn lesson + lagged sleeve. They must not steal the ribbon.
+- DraftKings Sportsbook and FanDuel Sportsbook are **not legal Florida tickets**. Do not route them as live plays.
+- College **athlete props** are illegal on Hard Rock. Block them. College **team** ML/spread/total is allowed.
+
+**Decision rules to implement exactly**
+- Defaults: live bankroll $200, unit 1%, daily halt −3%, weekly cap −10%, Path goal $2,000, paper book $2,500, max parlay legs 3, dust $1.
+- Seed (bankroll < $100) → recommended = **sit**.
+- Else recommended = **one Hard Rock main market at 1 unit** only when the Hard Rock price is fair or better (evPct ≥ 0). Otherwise sit.
+- Risky card may show a 2-leg (each no-vig fair prob ≥ 0.52) or 3-leg (each ≥ 0.58), mains only, pre-game only. Print combined fair hit rate. A 3-leg at 0.58 × 0.58 × 0.58 is about 19.5% before juice — show that number. If combined EV < −8%, stamp **priced as entertainment**. A parlay never takes the ribbon. No 4-legs. No same-game 3-leg SGP as a live card.
+- “Lock” means the desk call is the recommended human action. Never copy “this is a lock,” “guaranteed,” or “smash this.”
+- Sit is often the correct call. This is not investing and not low-risk high-reward.
+- Pre-game only. No in-play desk.
+- Delay always blocks auto-order. Board steam, public %, headlines, touts, and prediction contracts are **discarded** as live fills.
+- User can ignore the ribbon. Every Opinion card has **Do this / Because / Conviction / 11 checks / Learn more**. No nag-trade toasts.
+
+**Screens to ship first**
+Now, Learn (12-lesson carousel), Alerts, Options + `/option/$kind`, Path (ruin math + lottery disclaimer), Desk (paper blotter + halt), Board (consensus vs Hard Rock FL; show discarded public %), Slate (DK classic from paste / CSV / screenshot with user confirm).
+
+**Screenshot path is first-class**
+Android photo or file → parse sport/teams/market/side/price → user edits → only confirmed fields enter the scan. Low confidence = do not score.
+
+**Do not build**
+Hard Rock or DK login walls, SMS, silent auto-tickets, in-play/cash-out desk, PrizePicks-style house pick’em as a lane, 10-leg parlay builder, a single 0–100 game grade reused everywhere, Safe Trade / Safe Stack / Bush League screens or tickers, “AI that predicts the winner,” $50 → $1M copy.
+
+**Tests that must pass**
+The builder test cases in Section 13 of the bible — especially $50 seed never gets a live 3-leg ribbon, juiced board → sit, college props blocked, DK Sportsbook ticket blocked as a Florida live play, 11 checks in the specified order.
+
+Implement Edition 1 only. Leave Edition 2 items as interfaces (CLV log, FanDuel classic, Showdown, live prediction board, in-play). If a data feed is missing, sit and accept a screenshot — do not invent a Hard Rock number, a steam alert, a whale, or a forecast.
+
+Paste-ready purpose line for the app: *You put in a bankroll. Sports Lock evaluates sit, one main market, a small parlay, player props, DraftKings classic lineups, and lagged prediction markets — then always names the safest, balanced, and most aggressive move for this delayed pre-game board.*

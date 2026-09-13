@@ -1,0 +1,49 @@
+Here are the decisions and fixes for the next deployment:
+
+---
+
+### 1. URGENT BUG: Fix Page Freezing ("Page Unresponsive")
+The site is freezing every 10–20 seconds for up to a minute (Chrome is throwing "Page Unresponsive" on `/today`). This is caused by running heavy combinatorial loops (calculating 2-leg, 3-leg, and 4-leg combos across the entire slate) on the main browser thread during re-renders or background polling.
+
+**Apply these performance fixes immediately:**
+1. **Candidate Pruning (Cap the Input Pool):** Do NOT calculate combinations across every single market on the board. Filter down to the **top 15–20 highest-edge legs** first, and generate combos ONLY from that curated pool. This drops the combination space from 3,000,000+ calculations down to a few hundred, eliminating browser lockups.
+2. **Memoization & Web Worker:** Wrap the parlay evaluation engine in `useMemo` so it only recalculates when the live odds snapshot timestamp actually changes—never on routine component re-renders or user clicks.
+3. **Throttle Data Polling:** Ensure background refetches do not trigger a full board re-simulation. Set stale-time to a minimum of 60 seconds and prevent unmounted component memory leaks.
+
+---
+
+### 2. User Access & Role-Based Permissions (Admin vs. User)
+
+Turn Sign-in ON using Google OAuth / Email login. Implement role-based access control:
+
+* **Primary Super Admin:** `djalberty@gmail.com`
+* **Role Definitions:**
+  * **Admin Rights (`djalberty@gmail.com`):**
+    1. **Manage Allowlist:** Access to an on-site Admin Settings modal to view, add, or revoke approved user emails in real time without redeploying code.
+    2. **Algorithm & Threshold Tuning:** Ability to adjust model constants from the UI (e.g., change the 65% Safest threshold floor, adjust Kelly multiplier, or toggle sport feeds).
+    3. **Ledger Management:** Ability to manually edit, settle, void, or delete bets in the master ledger, and view aggregate performance analytics across all settled tickets.
+    4. **System Status:** View live API health checks (ESPN, Kalshi, Polymarket).
+  * **Standard User Rights (All other approved allowlist emails):**
+    1. View-only access to all prediction desks: AI Picks, Board, Game Day, Combos, and Fantasy.
+    2. Use the "Confirm with Hard Rock Photo" OCR tool on their own bets.
+    3. Maintain their own personal local bet log.
+    4. **Restricted:** Standard users CANNOT edit system-wide algorithms, view other users' logs, access admin settings, or invite other users.
+  * **Unapproved Visitors:**
+    * If an unlisted email attempts to sign in, render a clean screen: **"Access Pending Approval by Admin"** with a simple button to submit a request.
+
+---
+
+### 3. Decisions on Your Remaining Questions
+
+* **Question 2 (Safest ≥ 65% Floor):**
+  * **Solution:** Keep 65% as the preferred target, but **add a dynamic fallback**. If no ticket on today's delayed board reaches 65%, do NOT leave the column blank. Instead, display the highest-probability ticket on the board with a visual pill badge: **"Highest Probability Today (61%)"**. The column must never look broken or empty.
+* **Question 3 ("The Call" Twice):**
+  * **Solution:** Keep them distinct to eliminate confusion:
+    * The single gold-ribbon pick across the entire desk remains **"The Call"** (the highest-conviction gated play of the day).
+    * Retitle the column itself to **"Best Value"** (featuring all smart +EV plays).
+* **Question 4 (Ledger Storage & Sync):**
+  * **Solution:** Keep "Download my bets JSON" on the Log screen as an offline backup. For authenticated sessions, automatically persist user bet records to the database/session store so their tracking is never lost when clearing browser cache.
+
+---
+
+Deploy these updates under version pin `2026.09.10-master-v3`. Ensure the page freeze is resolved first so the site remains fast and responsive on mobile and desktop.
