@@ -12,7 +12,7 @@ import type { DeskPicks } from "./picks";
 import type { ScanBundle } from "./types";
 import { oddsFingerprint, rankDesk } from "./rank";
 import { DEFAULT_DESK_SETTINGS, rankSettingsOf, type DeskSettings } from "@/lib/desk-settings";
-import { getDeskSettings, listHiddenPicks } from "@/lib/desk-api";
+import { readDeskSettings, readHiddenPicks } from "@/lib/desk-public";
 
 export function DeskDecisionProvider({ children }: { children: ReactNode }) {
   const q = useBoardQuery();
@@ -30,14 +30,14 @@ export function DeskDecisionProvider({ children }: { children: ReactNode }) {
 
   const settingsQuery = useQuery({
     queryKey: ["desk-settings"],
-    queryFn: () => getDeskSettings(),
+    queryFn: () => readDeskSettings(),
     staleTime: 60_000,
     refetchOnWindowFocus: false,
     retry: 1,
   });
   const hiddenQuery = useQuery({
     queryKey: ["desk-hidden"],
-    queryFn: () => listHiddenPicks(),
+    queryFn: () => readHiddenPicks(),
     staleTime: 60_000,
     refetchOnWindowFocus: false,
     retry: 1,
