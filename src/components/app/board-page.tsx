@@ -1,0 +1,329 @@
+import { Link } from "@tanstack/react-router";
+import { useDeskDecision } from "@/lib/market/use-board";
+import { useDeskStore } from "@/lib/desk-store";
+import { formatAmerican, formatPct, formatKickoff, isTodayEt } from "@/lib/utils";
+import { MARKET_LABEL, TAG_LABEL, shortPick, sportLabel } from "@/lib/copy";
+import { leanEnglish, researchedFavorite, sortByResearchedChance, uniqueUpcomingGames } from "@/lib/market/research";
+import { ScreenshotIngest, PhotoFirstNote } from "./screenshot-ingest";
+import { SportFilter, applySportFilter, SportSeasonNote } from "./sport-filter";
+import { WagerMeter, HitReadout } from "./wager-meter";
+import { espnLogoUrl } from "@/lib/market/logos";
+import { isCollegeSport } from "@/lib/market/universe";
+import type { EventBrief, PredictQuote, ScanRow } from "@/lib/market/types";
+import { LiveStamp } from "./live-stamp";
+
+export function BoardPage() {
+  const { snapshot, scan, ranking } = useDeskDecision();
+  const sportFilter = useDeskStore((s) => s.sportFilter);
+  const setSportFilter = useDeskStore((s) => s.setSportFilter);
+  const hideCollege = useDeskStore((s) => s.hideCollege);
+  const splits = snapshot?.publicSplits ?? [];
+  const rows = (scan?.rows ?? []).filter((r) => !(hideCollege && isCollegeSport(r.sport)));
+  const sports = [...new Set((scan?.rows ?? []).map((r) => r.sport))];
+  const allGames = uniqueUpcomingGames(rows);
+  const games = sortByResearchedChance(
+    applySportFilter(allGames, sportFilter),
+    rows,
+    snapshot?.briefs,
+    snapshot?.predict,
+  );
+  const today = games.filter((g) => isTodayEt(g.start) || g.inPlay);
+  const later = games.filter((g) => !isTodayEt(g.start) && !g.inPlay);
+  const tableRows = applySportFilter(rows, sportFilter);
+  const filteredEmpty = !games.length && sportFilter && sportFilter !== "ALL" && allGames.length > 0;
+  const feedLooked = !allGames.length && (!sportFilter || sportFilter === "ALL");
+
+  return (
+    <div className="space-y-6">
+      <header className="max-w-2xl">
+        <p className="text-sm text-gold">Live ESPN schedule · tap a game to bet that one ticket</p>
+        <h1 className="font-display mt-2 text-3xl text-ink">Every game. Who's more likely, and what it pays.</h1>
+        <p className="mt-3 text-sm text-ink/80">{snapshot?.hours.note ?? snapshot?.sourceNote}</p>
+        <p className="mt-1 font-mono text-xs text-muted">
+          as of {snapshot ? new Date(snapshot.asOf).toLocaleString() : "—"} · {snapshot?.hours.label}
+        </p>
+      </header>
+
+      {ranking ? (
+        <p className="rounded-md bg-wash px-4 py-3 text-sm text-muted">
+          Ranking tickets in the background. You can still tap around.
+        </p>
+      ) : null}
+
+      <SportFilter sports={sports} />
+      <PhotoFirstNote venue="Hard Rock Bet Florida" />
+      <p className="text-sm text-muted">
+        Ranked by researched chance and payout together. A huge favorite that pays almost nothing sits lower. Today first.
+        {allGames.length ? ` ${allGames.length} games on All.` : ""}
+      </p>
+
+      <GameGrid
+        title="Playing today"
+        empty={
+          filteredEmpty
+            ? `This filter is ${sportLabel(sportFilter)}. No ${sportLabel(sportFilter)} game is tipping on this slate. ${allGames.length} other game${allGames.length === 1 ? "" : "s"} sit on All — clear the filter.`
+            : feedLooked
+              ? "ESPN feed Looked empty on this pull — not a skip. Photograph a Hard Rock Bet Florida screen."
+              : today.length
+                ? ""
+                : later.length
+                  ? `Nothing tipping today${sportFilter && sportFilter !== "ALL" ? ` in ${sportLabel(sportFilter)}` : ""}. Later this week is below.`
+                  : sportFilter && sportFilter !== "ALL"
+                    ? `This filter is ${sportLabel(sportFilter)}. No game tipping.`
+                    : "No game tipping today."
+        }
+        games={today}
+        rows={rows}
+        briefs={snapshot?.briefs}
+        quotes={snapshot?.quotes}
+        predict={snapshot?.predict}
+        onClear={filteredEmpty ? () => setSportFilter("ALL") : undefined}
+        allCount={allGames.length}
+      />
+      <GameGrid
+        title="Later this week"
+        empty={
+          later.length
+            ? ""
+            : filteredEmpty
+              ? ""
+              : feedLooked
+                ? "ESPN feed Looked empty on this pull — not a skip. Photograph a Hard Rock Bet Florida screen."
+                : sportFilter && sportFilter !== "ALL"
+                  ? `This filter is ${sportLabel(sportFilter)}. Nothing else later this week on that filter. Clear it to see All.`
+                  : "Nothing else on the board this week. Horizon is this slate — not a skip."
+        }
+        games={later}
+        rows={rows}
+        briefs={snapshot?.briefs}
+        quotes={snapshot?.quotes}
+        predict={snapshot?.predict}
+      />
+      {!games.length && sportFilter && sportFilter !== "ALL" ? <SportSeasonNote sport={sportFilter} /> : null}
+      {feedLooked ? (
+        <section className="paper-card p-5">
+          <p className="stamp text-gold">Empty board</p>
+          <h2 className="font-display mt-2 text-xl text-ink">No games on this slate.</h2>
+          <p className="mt-2 text-sm text-muted">
+            Off-slate or the ESPN feed Looked empty — not a skip. Photograph a Hard Rock Bet Florida screen so we still have a live number.
+          </p>
+        </section>
+      ) : null}
+
+      <details className="paper-card overflow-x-auto p-0">
+        <summary className="cursor-pointer bg-wash px-4 py-3 text-sm font-medium text-ink">
+          Every delayed number on this board
+        </summary>
+        <table className="w-full min-w-[860px] text-left text-sm">
+          <thead className="bg-wash text-muted">
+            <tr>
+              <th className="px-4 py-3">Event</th>
+              <th>When</th>
+              <th>Type</th>
+              <th>Public</th>
+              <th>Hard Rock FL</th>
+              <th>If it hits</th>
+              <th>Edge</th>
+              <th>Read</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tableRows.map((r, i) => (
+              <tr key={`${r.eventId}-${r.selection}-${i}`} className="border-t border-line">
+                <td className="px-4 py-3">
+                  <Link to="/game/$eventId" params={{ eventId: r.eventId }} className="font-medium text-ink underline-offset-4 hover:underline">
+                    {shortPick(r.selection, r.marketType)}
+                  </Link>
+                  <p className="text-xs text-muted">
+                    {sportLabel(r.sport)} · Away {r.away} · Home {r.home}
+                  </p>
+                </td>
+                <td className="whitespace-nowrap text-xs text-gold">
+                  {r.inPlay ? <LiveStamp row={r} /> : formatKickoff(r.start, true)}
+                </td>
+                <td>{MARKET_LABEL[r.marketType]}</td>
+                <td className="font-mono tabular-nums">{formatAmerican(r.consensusPrice ?? r.price)}</td>
+                <td className="font-mono tabular-nums">
+                  {r.hardRockPrice != null ? formatAmerican(r.hardRockPrice) : "confirm on Hard Rock"}
+                </td>
+                <td>
+                  <HitReadout chance={r.fairProb} price={r.hardRockPrice ?? r.price} className="mt-0" align="left" />
+                </td>
+                <td className="tabular-nums">{Number.isFinite(r.evPct) ? formatPct(r.evPct, 1) : "—"}</td>
+                <td className="text-xs text-muted">{TAG_LABEL[r.tag]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </details>
+
+      <section className="paper-card p-5">
+        <h2 className="font-display text-xl text-ink">Bets vs money</h2>
+        <p className="mt-2 text-sm text-muted">
+          Ticket count (how many wagers) vs handle (how many dollars). When they split, the money is the sharp tell. We use it as a layer — we do not copy the public and we do not auto-fade it. Not Hard Rock's own book.
+        </p>
+        <ul className="mt-3 space-y-3">
+          {splits.map((s) => {
+            const tickets = s.ticketPct || s.publicPct;
+            const money = s.handlePct ?? s.publicPct;
+            return (
+              <li key={`${s.eventId}-${s.side}`}>
+                <div className="flex justify-between text-sm">
+                  <span>
+                    {s.side.replace(/\s+ML\b/gi, " to win")}
+                    {s.steam ? " · steam" : ""}
+                    {s.lean === "sharp" ? " · money lead" : s.lean === "public" ? " · public on tickets" : ""}
+                  </span>
+                  <span className="font-mono tabular-nums text-gold">
+                    {tickets}% bets · {money}% $
+                  </span>
+                </div>
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-navy-deep">
+                    <span className="block h-full bg-ink/50" style={{ width: `${tickets}%` }} />
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-navy-deep">
+                    <span className="block h-full bg-gold" style={{ width: `${money}%` }} />
+                  </div>
+                </div>
+                {s.note ? <p className="mt-1 text-xs text-muted">{s.note}</p> : null}
+              </li>
+            );
+          })}
+        </ul>
+        {!splits.length ? <p className="mt-2 text-sm text-muted">No ticket/handle split on this pull yet.</p> : null}
+      </section>
+
+      <p className="text-sm">
+        Build a custom ticket on{" "}
+        <Link to="/parlay" className="font-medium text-gold underline-offset-4 hover:underline">
+          Your parlay
+        </Link>
+        . Photograph a slip and we grade every leg.
+      </p>
+
+      <ScreenshotIngest heading="Upload a screenshot of a parlay or a single ticket" />
+    </div>
+  );
+}
+
+function GameGrid({
+  title,
+  empty,
+  games,
+  rows,
+  briefs,
+  quotes,
+  predict,
+  onClear,
+  allCount,
+}: {
+  title: string;
+  empty: string;
+  games: ScanRow[];
+  rows: ScanRow[];
+  briefs?: EventBrief[];
+  quotes?: { eventId: string; awayRecord?: string; homeRecord?: string }[];
+  predict?: PredictQuote[];
+  onClear?: () => void;
+  allCount?: number;
+}) {
+  if (!games.length) {
+    if (!empty) return null;
+    return (
+      <section>
+        <h2 className="font-display mb-2 text-xl text-ink">{title}</h2>
+        <p className="text-sm text-muted">{empty}</p>
+        {onClear ? (
+          <button
+            type="button"
+            onClick={onClear}
+            className="mt-3 inline-flex min-h-11 items-center rounded-md bg-gold px-4 text-sm font-medium text-navy-deep"
+          >
+            Clear filter{allCount ? ` · ${allCount} on All` : ""}
+          </button>
+        ) : null}
+      </section>
+    );
+  }
+  return (
+    <section>
+      <h2 className="font-display mb-3 text-xl text-ink">{title}</h2>
+      <div className="grid gap-3 md:grid-cols-2">
+        {games.map((g) => {
+          const brief = briefs?.find((b) => b.eventId === g.eventId);
+          const quote = quotes?.find((q) => q.eventId === g.eventId);
+          const awayRec = brief?.awayRecord ?? quote?.awayRecord;
+          const homeRec = brief?.homeRecord ?? quote?.homeRecord;
+          const pred = predict?.find((p) => p.eventId === g.eventId);
+          const fav = researchedFavorite(
+            rows.filter((r) => r.eventId === g.eventId),
+            brief,
+            { home: g.home, away: g.away, kalshiHome: pred?.kalshiHome, polyHome: pred?.polyHome },
+          );
+          const lean = leanEnglish({
+            home: g.home,
+            away: g.away,
+            oddsHome: g.side === "home" ? g.fairProb : 1 - g.fairProb,
+            espnHome: brief?.espnHomeWin,
+            ensembleHome: fav?.homeChance,
+            crowdHome: pred?.kalshiHome ?? pred?.polyHome,
+          });
+          return (
+            <Link key={g.eventId} to="/game/$eventId" params={{ eventId: g.eventId }} className="paper-card p-4">
+              <p className="stamp text-muted">
+                {sportLabel(g.sport)}
+                {g.phase === "preseason" ? " · Preseason" : g.phase === "playoff" ? " · Playoff" : ""}
+                {g.scheduleOnly ? " · Odds soon" : ""}
+                {isTodayEt(g.start) && !g.inPlay ? " · Today" : ""}
+              </p>
+              <LiveStamp row={g} className="mt-1 block" />
+              <div className="mt-2 flex items-center gap-3">
+                {(g.awayLogo || g.awayAbbr) ? (
+                  <img
+                    src={g.awayLogo || espnLogoUrl(g.sport, g.awayAbbr) || ""}
+                    alt=""
+                    width={32}
+                    height={32}
+                    className="size-8 shrink-0 rounded-full bg-wash object-contain"
+                  />
+                ) : null}
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-ink">{g.away}{awayRec ? ` (${awayRec})` : ""}</p>
+                  <p className="font-medium text-ink">{g.home}{homeRec ? ` (${homeRec})` : ""}</p>
+                </div>
+                {(g.homeLogo || g.homeAbbr) ? (
+                  <img
+                    src={g.homeLogo || espnLogoUrl(g.sport, g.homeAbbr) || ""}
+                    alt=""
+                    width={32}
+                    height={32}
+                    className="size-8 shrink-0 rounded-full bg-wash object-contain"
+                  />
+                ) : null}
+              </div>
+              <p className="mt-1 text-sm text-gold">{formatKickoff(g.start, true)}</p>
+              <p className="mt-2 text-sm text-ink">{lean.title}</p>
+              {fav ? (
+                <WagerMeter
+                  className="mt-3"
+                  size="sm"
+                  chance={fav.chance}
+                  price={g.price}
+                  label={`${fav.name} to win`}
+                />
+              ) : Number.isFinite(g.fairProb) ? (
+                <WagerMeter className="mt-3" size="sm" chance={g.fairProb} price={g.price} />
+              ) : null}
+              <p className="mt-2 text-xs text-muted">
+                {brief?.weather ?? ""}
+                {brief?.injuryCount ? ` · ${brief.injuryCount} injury listings` : ""}
+              </p>
+              <p className="mt-2 text-xs font-medium text-gold">Bet this one game →</p>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
