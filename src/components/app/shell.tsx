@@ -48,7 +48,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
             <span className="leading-tight">
               <span className="font-display block text-lg font-semibold tracking-wide text-ink">{BRAND.name}</span>
-              <span className="hidden text-xs uppercase tracking-[0.16em] text-gold sm:block">{BRAND.tagline}</span>
+             <span className="hidden text-xs uppercase tracking-[0.16em] text-gold sm:block">Intelligence. Edge. Confidence.</span>
             </span>
           </Link>
           <div className="flex items-center gap-1">
