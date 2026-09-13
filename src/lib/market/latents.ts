@@ -13,6 +13,7 @@ import { applyProcessToMeans } from "./process-g.ts";
 import { applyRecencyToMeans } from "./recency-g.ts";
 import { applySplitsToMeans } from "./splits-g.ts";
 import { applyMatchupToMeans } from "./matchup-g.ts";
+import { capLatentToClose } from "./g-cap.ts";
 
 export type LiveLatentFields = {
   inPlay?: boolean;
@@ -108,7 +109,8 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
   latent.muA *= venueMeans.muA * restMeans.muA * avail.muA * processMeans.muA * recencyMeans.muA * splitMeans.muA * matchupMeans.muA;
   const note = [venueMeans.note, restMeans.note, avail.note, processMeans.empty ? undefined : processMeans.note, recencyMeans.empty ? undefined : recencyMeans.note, splitMeans.empty ? undefined : splitMeans.note, matchupMeans.empty ? undefined : matchupMeans.note].filter(Boolean).join(" ");
   if (note) latent.note = note;
-  const next = applyLiveRemaining(latent, {
+  const capped = capLatentToClose(latent);
+  const next = applyLiveRemaining(capped, {
     inPlay: input.inPlay,
     homeScore: input.homeScore,
     awayScore: input.awayScore,
