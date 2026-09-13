@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { DESK_VERSION } from "@/lib/market/rules";
+import { DESK_CONSTANTS, DESKS } from "@/lib/market/engineering";
 import { useDeskStore, selectUnit } from "@/lib/desk-store";
 import { formatBetUsd } from "@/lib/copy";
 import { Input } from "@/components/ui/input";
@@ -77,6 +78,30 @@ export function MorePage() {
             </li>
           ))}
         </ol>
+      </section>
+
+      <section id="desks" className="paper-card scroll-mt-24 p-5">
+        <p className="stamp text-gold">Shipped map</p>
+        <h2 className="font-display mt-2 text-xl text-ink">Desks</h2>
+        <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+          {DESKS.map((d) => (
+            <li key={d.route}>
+              <Link to={d.route} className="block rounded-md bg-wash px-3 py-3 hover:bg-wash-gold/40">
+                <p className="text-sm font-medium text-ink">{d.name}</p>
+                <p className="text-xs text-muted">{d.line}</p>
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <h3 className="font-display mt-6 text-lg text-ink">What is pinned</h3>
+        <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+          {DESK_CONSTANTS.map((c) => (
+            <div key={c.name} className="rounded-md bg-wash px-3 py-2">
+              <dt className="text-xs uppercase tracking-[0.12em] text-muted">{c.name}</dt>
+              <dd className="text-sm text-ink">{c.value}</dd>
+            </div>
+          ))}
+        </dl>
       </section>
 
       <section id="words" className="paper-card scroll-mt-24 p-5">
