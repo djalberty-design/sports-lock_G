@@ -1,4 +1,5 @@
 /** Paper log + Drive-shaped ledger. Runtime store is local; Drive copy is a download. */
+import { postMortem } from "./market/post-mortem.ts";
 
 export type LedgerResult = "PENDING" | "HIT" | "MISS" | "PUSH";
 
@@ -40,7 +41,7 @@ export function paperToLedger(t: {
       ? "PARLAY"
       : t.kind === "prop"
         ? "PROP"
-        : /spread|\\+|−|-\\d/.test(t.description)
+        : /spread|\\+|\u2212|-\\d/.test(t.description)
           ? "SPREAD"
           : /over|under/i.test(t.description)
             ? "TOTAL"
@@ -55,6 +56,8 @@ export function paperToLedger(t: {
       : undefined;
   const edge =
     t.chance != null && implied != null ? Math.round((t.chance - implied) * 1000) / 10 : 0;
+  const status =
+    t.status === "win" ? "win" : t.status === "loss" ? "loss" : t.status === "void" ? "void" : "open";
   return {
     id: t.id,
     timestamp: t.createdAt,
@@ -67,13 +70,24 @@ export function paperToLedger(t: {
     expectedEdgePct: edge,
     stakeDollars: t.stake,
     result,
-    layerSnapshots: {},
+    postMortemNotes: postMortem({
+      selection: t.description,
+      chance: t.chance,
+      status,
+      edge: edge / 100,
+    }),
+    layerSnapshots: {
+      ...(t.chance != null && Number.isFinite(t.chance) ? { desk: t.chance } : {}),
+      ...(implied != null ? { book: implied } : {}),
+    },
   };
 }
 
 export function downloadLedger(entries: BetLedgerEntry[]): void {
   if (typeof document === "undefined") return;
-  const blob = new Blob([JSON.stringify({ version: 1, entries }, null, 2)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify({ version: 1, file: LEDGER_FILE, folder: LEDGER_FOLDER, entries }, null, 2)], {
+    type: "application/json",
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
