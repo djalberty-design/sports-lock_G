@@ -1,9 +1,18 @@
-import type { ChanceInput } from "./chance";
-import type { LiveLatentFields } from "./latents";
-import type { TeamLooks } from "./looks";
-import type { OfficialPosting } from "./officials";
+import type { ChanceInput } from "./chance.ts";
+import type { LiveLatentFields } from "./latents.ts";
+import type { TeamLooks } from "./looks.ts";
+import type { OfficialPosting } from "./officials.ts";
 
-type WatchdogResult<T> = { data: T | null; healthy: boolean; error?: string };
+export type WatchdogResult<T> = { data: T | null; healthy: boolean; error?: string };
+
+export type PlayerVolumeBaseline = {
+  playerId: string;
+  playerName: string;
+  targetShare: number;
+  routeParticipation: number;
+  redZoneSnapPct: number;
+  epaPerPlay: number;
+};
 
 /**
  * The Watchdog Wrapper: Catches silent API changes and triggers the "Empty Look" law gracefully.
@@ -30,7 +39,6 @@ async function fetchWithWatchdog<T>(
  * Safely extracts clock, period, and scores to feed the remaining-G math.
  */
 export async function getEspnLiveState(sport: string, eventId: string): Promise<LiveLatentFields> {
-  // ESPN undocumented widget API endpoint mapping
   const sportPath = sport === "NFL" ? "football/nfl" :
                     sport === "NBA" ? "basketball/nba" :
                     sport === "MLB" ? "baseball/mlb" :
@@ -56,7 +64,6 @@ export async function getEspnLiveState(sport: string, eventId: string): Promise<
       clock: status?.displayClock,
       homeScore: homeNode?.score ? Number(homeNode.score) : undefined,
       awayScore: awayNode?.score ? Number(awayNode.score) : undefined,
-      // Pass raw crew names to trigger the officials.ts contract
       officials: comp.officials?.map((o: any) => ({ name: o.fullName, role: o.position })) || []
     } as LiveLatentFields;
   }, `ESPN Live (${sport})`);
@@ -65,12 +72,51 @@ export async function getEspnLiveState(sport: string, eventId: string): Promise<
 }
 
 /**
+ * NFL Player Volume Parser
+ * Extracts target share and expected opportunity from free JSON feeds.
+ */
+export async function getNflPlayerVolume(eventId: string): Promise<PlayerVolumeBaseline[]> {
+  const url = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=${eventId}`;
+  
+  const { data } = await fetchWithWatchdog(url, (json) => {
+    const boxscore = json?.boxscore;
+    if (!boxscore || !boxscore.players) throw new Error("Missing player boxscore arrays");
+    
+    const baselines: PlayerVolumeBaseline[] = [];
+    
+    for (const team of boxscore.players) {
+      const receivingStats = team.statistics?.find((s: any) => s.name === "receiving");
+      if (!receivingStats) continue;
+      
+      const teamTargets = receivingStats.totals[1] ? Number(receivingStats.totals[1]) : 1; 
+
+      for (const athlete of receivingStats.athletes) {
+        const stats = athlete.stats;
+        if (!stats) continue;
+        
+        const targets = Number(stats[1] || 0); 
+        const targetShare = targets / Math.max(1, teamTargets);
+        
+        baselines.push({
+          playerId: athlete.athlete.id,
+          playerName: athlete.athlete.displayName,
+          targetShare: targetShare,
+          routeParticipation: 0, 
+          redZoneSnapPct: 0,
+          epaPerPlay: 0 
+        });
+      }
+    }
+    return baselines;
+  }, "ESPN NFL Summary");
+
+  return data ?? [];
+}
+
+/**
  * Advanced Process Metrics (EPA / xwOBA) Stub
- * Ready for your Action Network or RefMetrics API keys.
  */
 export async function getAdvancedProcess(sport: string, teamId: string): Promise<TeamLooks | undefined> {
-  // TODO: Wire up commercial API endpoints here. 
-  // Returning undefined enforces the Empty Look law automatically.
   return undefined; 
 }
 
@@ -78,6 +124,5 @@ export async function getAdvancedProcess(sport: string, teamId: string): Promise
  * Umpire / Referee ATS Tendency Stub
  */
 export async function getCrewTendencies(crewNames: string[]): Promise<OfficialPosting[]> {
-  // TODO: Wire RefMetrics parsing here. Map their JSON to OfficialPosting[].
   return [];
 }
