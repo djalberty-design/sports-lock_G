@@ -10,7 +10,7 @@ import { fetchTeamLooks, type TeamLooks } from "./looks.ts";
 import { sgpHaircut } from "./parlays.ts";
 import { shownCombinedChance } from "./calibrate.ts";
 import { formatChancePct } from "../copy.ts";
-import { drawPaths, jointHit, latentFromScores } from "./sim.ts";
+import { drawPaths, latentFromScores } from "./sim.ts";
 import type { DeskSnapshot, EventBrief, MarketType, ParsedTicket, PredictQuote, QuoteLine, ScanRow } from "./types.ts";
 
 export type InjuryRow = { team: string; player: string; status: string; detail: string };
