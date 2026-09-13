@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { DESK_VERSION } from "@/lib/market/rules";
-import { DESK_CONSTANTS, DESKS } from "@/lib/market/engineering";
+import { DESK_CONSTANTS, DESKS, NEVER_DO } from "@/lib/market/engineering";
 import { useDeskStore, selectUnit } from "@/lib/desk-store";
 import { formatBetUsd } from "@/lib/copy";
 import { Input } from "@/components/ui/input";
@@ -102,6 +102,20 @@ export function MorePage() {
             </div>
           ))}
         </dl>
+      </section>
+
+      <section id="never" className="paper-card scroll-mt-24 p-5">
+        <p className="stamp text-gold">Hard lines</p>
+        <h2 className="font-display mt-2 text-xl text-ink">What this site will never do</h2>
+        <p className="mt-2 text-sm text-ink/80">
+          These are law. A later feature cannot cross them without a new desk pin and a new bible.
+        </p>
+        <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-ink">
+          {NEVER_DO.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ol>
+        <p className="mt-4 text-sm text-muted">Desk {DESK_VERSION}. This site never places a bet.</p>
       </section>
 
       <section id="words" className="paper-card scroll-mt-24 p-5">
