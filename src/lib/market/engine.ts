@@ -17,7 +17,7 @@ import type {
 import { deskScore, parlayScore, stampRows } from "./tape.ts";
 import { correlationOf, sgpHaircut, typicalParlayJuice } from "./parlays.ts";
 import { growthScore, jointFromLegs, sameGameRho } from "./copula.ts";
-import { blendFair, drawPaths, latentFromScores, simCover, simOver, simWin } from "./sim.ts";
+import { drawPaths, latentFromScores, simCover, simOver, simWin } from "./sim.ts";
 import { leftoverOverProb, liveFromRow } from "./live-state.ts";
 import { buildLatents } from "./latents.ts";
 import { buildUsage, usageOf } from "./usage.ts";
@@ -51,16 +51,30 @@ export function decimalToAmerican(dec: number): number {
   return Math.round(-100 / (dec - 1));
 }
 
+// Upgraded: Iterative Power Method to eliminate Favorite-Longshot Bias
 export function twoWayNoVig(oddsHome: number, oddsAway: number) {
   const pHome = americanToImplied(oddsHome);
   const pAway = americanToImplied(oddsAway);
   const sum = pHome + pAway;
-  if (!Number.isFinite(sum) || sum <= 0) {
+  
+  if (!Number.isFinite(sum) || sum <= 0 || pHome >= 1 || pAway >= 1) {
     return { fairHome: NaN, fairAway: NaN, hold: NaN };
   }
+  if (sum === 1) return { fairHome: pHome, fairAway: pAway, hold: 0 };
+
+  let low = 0.5;
+  let high = 2.0;
+  let k = 1.0;
+  for (let i = 0; i < 15; i++) {
+    k = (low + high) / 2;
+    const diff = Math.pow(pHome, k) + Math.pow(pAway, k) - 1;
+    if (diff > 0) low = k;
+    else high = k;
+  }
+
   return {
-    fairHome: pHome / sum,
-    fairAway: pAway / sum,
+    fairHome: Math.pow(pHome, k),
+    fairAway: Math.pow(pAway, k),
     hold: sum - 1,
   };
 }
@@ -754,6 +768,45 @@ function eventSeed(snapshot: DeskSnapshot, eventId: string, pWinH: number): stri
   return `${eventId}|${pWinH.toFixed(5)}|${quotes}`;
 }
 
+// Upgraded: Dynamic Blend Time-Decay and Sharp Action Ratio
+function dynamicBlend(
+  sim: number | undefined, 
+  pool: number | undefined, 
+  market: number | undefined, 
+  startIso: string, 
+  ticketPct?: number, 
+  handlePct?: number
+): number {
+  let wSim = 0.5;
+  let wPool = 0.3;
+  let wMarket = 0.2;
+  
+  if (startIso) {
+    const msUntil = new Date(startIso).getTime() - Date.now();
+    if (msUntil > 0 && msUntil < 2 * 3600_000) {
+      const urgency = 1 - (msUntil / (2 * 3600_000));
+      wMarket += 0.2 * urgency;
+      wSim -= 0.1 * urgency;
+      wPool -= 0.1 * urgency;
+    }
+  }
+  
+  if (handlePct != null && ticketPct != null && ticketPct > 0) {
+    const ratio = handlePct / ticketPct;
+    if (ratio >= 1.5) wMarket *= 1.25;
+    else if (ratio < 0.7) wMarket *= 0.75;
+  }
+  
+  const parts: { w: number; v: number }[] = [];
+  if (sim != null && Number.isFinite(sim)) parts.push({ w: wSim, v: sim });
+  if (pool != null && Number.isFinite(pool)) parts.push({ w: wPool, v: pool });
+  if (market != null && Number.isFinite(market)) parts.push({ w: wMarket, v: market });
+  
+  if (!parts.length) return 0.5;
+  const w = parts.reduce((s, p) => s + p.w, 0);
+  return parts.reduce((s, p) => s + (p.w / w) * p.v, 0);
+}
+
 function applyEnsemble(rows: ScanRow[], snapshot: DeskSnapshot): ScanRow[] {
   const byEvent = new Map<string, ScanRow[]>();
   for (const r of rows) {
@@ -828,7 +881,6 @@ function applyEnsemble(rows: ScanRow[], snapshot: DeskSnapshot): ScanRow[] {
     const process = processFromLooks(row.sport, chanceInput.homeLooks, chanceInput.awayLooks);
     const simOk = Boolean(built.latent.ran);
     
-    // Updated line: drawPaths now returns the latent directly, no Monte Carlo loops
     const paths = simOk ? drawPaths(built.latent, eventSeed(snapshot, eventId, built.latent.pWinH)) : [];
     
     const simHome = simOk ? simWin(paths) : { p: undefined as number | undefined, ran: false };
@@ -877,7 +929,11 @@ function applyEnsemble(rows: ScanRow[], snapshot: DeskSnapshot): ScanRow[] {
           leftover = true;
         }
       }
-      const fairProb = leftover ? poolFair : blendFair(simFair, poolFair, marketFair);
+      
+      const tPct = r.ticketPct ?? (r.side === "home" ? chanceInput.ticketHome : undefined);
+      const hPct = r.handlePct ?? (r.side === "home" ? chanceInput.handleHome : undefined);
+      const fairProb = leftover ? poolFair : dynamicBlend(simFair, poolFair, marketFair, r.start, tPct, hPct);
+      
       const playerUse = r.player ? usageOf(usage, r.player) : undefined;
       const listedOut = Boolean(playerUse?.standDown);
       const unknown = Boolean(r.isProp) && !isKnownMarket(r.selection, r.marketType);
