@@ -782,6 +782,14 @@ export function calculatePlayerPropMean(
     case "total_bases":
       // Batter bases: (Expected Plate Appearances) * (OBP Proxy) * 1.2 Extra Base modifier
       return baseline.targetShare * baseline.epaPerPlay * 1.2;
+
+    case "shots_on_goal":
+      // NHL Shots: (TOI Share Baseline) * 2.8 average shots per top-6 forward
+      return baseline.targetShare * 2.8 * baseline.epaPerPlay;
+      
+    case "points":
+      // NHL Points: (TOI Share Baseline) * 0.8 expected game involvement rate
+      return baseline.targetShare * 0.8 * baseline.epaPerPlay;
       
     default:
       return 0;
