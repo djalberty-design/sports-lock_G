@@ -12,37 +12,38 @@ const SOURCE =
   "https://raw.githubusercontent.com/djalberty-design/sports-lock_G/f247376fb0b16398a2e64b7204bf3210828626c0/src/lib/market/research.ts";
 
 const GRADE_PARLAY = `export function gradeParlay(legs) {
-\tconst sameGame = new Set(legs.map((l) => l.eventId)).size < legs.length;
-\tconst mlAndSpread = sameGame && legs.some((l) => l.marketType === "ml") && legs.some((l) => l.marketType === "spread");
-\tconst raw = product(legs.map((l) => Number.isFinite(l.fairProb) ? l.fairProb : americanToImplied(l.price)));
-\tconst fair = Math.min(.97, raw * (sameGame ? sgpHaircut(legs.length, mlAndSpread) : 1));
-\tconst implied = product(legs.map((l) => americanToImplied(l.price)));
-\tconst decimalPayout = product(legs.map((l) => americanToDecimal(l.price)));
-\tconst profitOn100 = (decimalPayout - 1) * 100;
-\tconst longshot = legs.length >= 4 || fair < .2;
-\tconst entertainment = fair < .25 || legs.length >= 4;
-\tconst shownPct = formatChancePct(shownCombinedChance(fair, decimalPayout, legs.length, sameGame)) ?? \`\${Math.round(fair * 100)}%\`;
-\treturn {
-\t\tlegs,
-\t\tcombinedFair: fair,
-\t\tcombinedImplied: implied,
-\t\tdecimalPayout,
-\t\tprofitOn100,
-\t\tindependent: !sameGame,
-\t\tlongshot,
-\t\tentertainment,
-\t\tcorrelation: sameGame ? "fallback-haircut" : "near-independent",
-\t\theadline: entertainment ? \`\${legs.length}-game parlay — fun money, not a plan\` : \`\${legs.length}-game parlay\`,
-\t\tbecause: [
-\t\t\tsameGame
-\t\t\t\t? \`Thin fallback-haircut. Combined chance ≈ \${shownPct}.\`
-\t\t\t\t: \`If every game is independent, about \${shownPct.replace("%", "")} in 100 tickets like this hit.\`,
-\t\t\t\`The sportsbook pays about $\${profitOn100.toFixed(0)} profit on a $100 bet if they all win.\`,
-\t\t\tlongshot ? "Stacking more games makes the payout jump and the win chance collapse. That is the trade." : "Both (or all) must win or the whole ticket loses.",
-\t\t\t"Real parlays hit a bit less often than this math because each price already includes the house cut.",
-\t\t\tlegs.some((l) => l.marketType === "prop") ? "Player-bet legs use the photographed number plus game total, script, weather, park, rest, and injuries." : null,
-\t\t].filter(Boolean).join(" ")
-\t};
+	const graded = combineParlayFair(legs);
+	const fair = graded.combinedFair;
+	const sameGame = graded.sameGame;
+	const implied = product(legs.map((l) => americanToImplied(l.price)));
+	const decimalPayout = product(legs.map((l) => americanToDecimal(l.price)));
+	const profitOn100 = (decimalPayout - 1) * 100;
+	const longshot = legs.length >= 4 || fair < .2;
+	const entertainment = fair < .25 || legs.length >= 4;
+	const shownPct = formatChancePct(shownCombinedChance(fair, decimalPayout, legs.length, sameGame)) ?? \`\${Math.round(fair * 100)}%\`;
+	return {
+		legs,
+		combinedFair: fair,
+		combinedImplied: implied,
+		decimalPayout,
+		profitOn100,
+		independent: !sameGame,
+		longshot,
+		entertainment,
+		correlation: graded.correlation,
+		headline: entertainment ? \`\${legs.length}-game parlay — fun money, not a plan\` : \`\${legs.length}-game parlay\`,
+		because: [
+			sameGame && graded.correlation === "shared-latent"
+				? \`Same-game joint off G (Clayton). Combined chance ≈ \${shownPct}.\`
+				: sameGame
+					? \`Thin fallback-haircut — G did not run on a leg. Combined chance ≈ \${shownPct}.\`
+					: \`If every game is independent, about \${shownPct.replace("%", "")} in 100 tickets like this hit.\`,
+			\`The sportsbook pays about $\${profitOn100.toFixed(0)} profit on a $100 bet if they all win.\`,
+			longshot ? "Stacking more games makes the payout jump and the win chance collapse. That is the trade." : "Both (or all) must win or the whole ticket loses.",
+			"Real parlays hit a bit less often than this math because each price already includes the house cut.",
+			legs.some((l) => l.marketType === "prop") ? "Player-bet legs use the photographed number plus game total, script, weather, park, rest, and injuries." : null,
+		].filter(Boolean).join(" ")
+	};
 }
 `;
 
@@ -59,8 +60,16 @@ text = text.replace(/^import \{ drawPaths, latentFromScores \} from "\.\/sim\.ts
 text = text.replace(/^import \{ drawPaths, jointHit, latentFromScores \} from "\.\/sim\.ts";\n/m, "");
 text = text.replace(/^import \{ jointHit \} from "\.\/sim\.ts";\n/m, "");
 
-if (text.includes("jointHit")) {
-  text = text.replace(/export function gradeParlay\(legs\) \{[\s\S]*?\n\}\n(?=export function matchParsedToRows)/, GRADE_PARLAY + "\n");
+if (!text.includes("combineParlayFair")) {
+  text = text.replace(
+    'import { sgpHaircut } from "./parlays.ts";',
+    'import { sgpHaircut } from "./parlays.ts";\nimport { combineParlayFair } from "./joint-grade.ts";',
+  );
+}
+
+text = text.replace(/export function gradeParlay\(legs\) \{[\s\S]*?\n\}\n(?=export function matchParsedToRows)/, GRADE_PARLAY + "\n");
+if (!text.includes("combineParlayFair")) {
+  throw new Error("assemble-research: combineParlayFair missing after gradeParlay patch");
 }
 
 if (text.includes("jointHit") || text.includes("from \"./sim.ts\"")) {
