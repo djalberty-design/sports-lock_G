@@ -7,8 +7,9 @@ import { ScreenshotIngest, PhotoFirstNote } from "./screenshot-ingest";
 import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { postMortem } from "@/lib/market/post-mortem";
-import { brierScore } from "@/lib/market/brier";
 import { downloadLedger, paperToLedger } from "@/lib/ledger";
+import { ledgerBrier, pendingLayerHaircuts } from "@/lib/market/ledger-law";
+import { DESK_VERSION } from "@/lib/market/rules";
 
 export function DeskPage() {
   const paperTickets = useDeskStore((s) => s.paperTickets);
@@ -22,11 +23,9 @@ export function DeskPage() {
   const open = paperTickets.filter((t) => t.status === "open");
   const settled = paperTickets.filter((t) => t.status === "win" || t.status === "loss" || t.status === "void");
   const weekPnl = liveBankroll - weekAnchor;
-  const brier = brierScore(
-    settled
-      .filter((t) => t.status === "win" || t.status === "loss")
-      .map((t) => ({ p: t.chance ?? 0.5, hit: t.status === "win" })),
-  );
+  const entries = paperTickets.map(paperToLedger);
+  const brier = ledgerBrier(entries);
+  const haircuts = pendingLayerHaircuts(entries);
 
   return (
     <div className="space-y-6">
@@ -164,12 +163,21 @@ export function DeskPage() {
 
       {brier != null ? (
         <p className="text-sm text-muted">
-          Rolling Brier on settled tickets: {brier.toFixed(3)}. After 20+ tickets a weak layer gets a 10% haircut. This
-          site never places a bet.
+          Rolling Brier (last 50 settled): {brier.toFixed(3)}. Desk pin {DESK_VERSION}. A weak layer's 10% haircut waits
+          for the next pin — it does not rewrite tonight. This site never places a bet.
         </p>
       ) : (
-        <p className="text-sm text-muted">Brier score shows after eight settled Hit/Miss tickets.</p>
+        <p className="text-sm text-muted">Brier score shows after eight settled Hit/Miss tickets with a real desk chance. Missing chance stays empty.</p>
       )}
+      {haircuts.length ? (
+        <p className="text-sm text-gold">
+          Pending haircut (not live tonight): {haircuts.map((h) => `${h.layerId} ×${h.haircut}`).join(" · ")}.
+        </p>
+      ) : null}
+      <p className="text-xs text-muted">
+        This device keeps the log. Signed-in sessions also save to the desk database. Guests never hit those endpoints.
+        Download JSON for the Drive backup named sports_lock_ledger.json.
+      </p>
 
       <section className="flex flex-wrap items-center gap-3">
         <Button
