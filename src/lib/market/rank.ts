@@ -1,9 +1,10 @@
 /** One ranking pass. Worker and main-thread fallback both call this. */
-import type { DeskSnapshot, ScanBundle } from "./types.ts";
+import type { DeskSnapshot, ScanBundle, ScanRow } from "./types.ts";
 import { buildScan } from "./engine.ts";
-import { buildDeskPicks, type DeskPicks } from "./picks.ts";
+import { buildDeskPicks, type DeskPicks, type DeskPick } from "./picks.ts";
 import type { RankSettings } from "../desk-settings.ts";
 import { DESK_VERSION } from "./rules.ts";
+import { floridaBlockReason, isFloridaBlocked } from "./florida.ts";
 
 export type RankRequest = {
   id: number;
@@ -19,13 +20,56 @@ export type RankResult = {
   ms: number;
 };
 
+function applyFloridaLaw(scan: ScanBundle): ScanBundle {
+  const rows: ScanRow[] = scan.rows.map((r) => {
+    if (!isFloridaBlocked(r) || r.tag === "illegal_fl") return r;
+    return {
+      ...r,
+      tag: "illegal_fl",
+      action: "stand_down",
+      reason: floridaBlockReason(r) ?? r.reason,
+    };
+  });
+  return { ...scan, rows };
+}
+
+function pickLooksBlocked(p: DeskPick): boolean {
+  const row = p.row;
+  return isFloridaBlocked({
+    sport: row?.sport ?? p.sport,
+    isProp: row?.isProp || p.bucket === "prop",
+    marketType: row?.marketType ?? (p.bucket === "prop" ? "prop" : undefined),
+    player: row?.player ?? p.player,
+    selection: row?.selection ?? p.selection,
+    venueNote: row?.venueNote,
+  });
+}
+
+function scrubPicks(picks: DeskPicks): DeskPicks {
+  const keep = (list: DeskPick[]) => list.filter((p) => !pickLooksBlocked(p));
+  const hero = picks.hero && pickLooksBlocked(picks.hero) ? null : picks.hero;
+  return {
+    ...picks,
+    hero,
+    popular: keep(picks.popular),
+    props: keep(picks.props),
+    periods: keep(picks.periods),
+    sgp: keep(picks.sgp),
+    two: keep(picks.two),
+    three: keep(picks.three),
+    four: keep(picks.four),
+    ribbon: keep(picks.ribbon),
+    all: keep(picks.all),
+  };
+}
+
 export function rankDesk(
   snapshot: DeskSnapshot,
   halt: boolean,
   settings?: RankSettings,
 ): { scan: ScanBundle; picks: DeskPicks } {
-  const scan = buildScan(snapshot, halt, settings);
-  const picks = buildDeskPicks(scan, snapshot);
+  const scan = applyFloridaLaw(buildScan(snapshot, halt, settings));
+  const picks = scrubPicks(buildDeskPicks(scan, snapshot));
   return { scan, picks };
 }
 
