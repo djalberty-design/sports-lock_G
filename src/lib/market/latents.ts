@@ -6,6 +6,7 @@ import { buildChance, type ChanceInput } from "./chance.ts";
 import { leagueTotal } from "./chance.ts";
 import { latentFromScores, type GameLatent } from "./sim.ts";
 import { applyLiveRemaining } from "./live-state.ts";
+import { applyVenueToMeans } from "./venues.ts";
 
 export type LiveLatentFields = {
   inPlay?: boolean;
@@ -23,9 +24,16 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
   const report = buildChance(input);
   const homeWin = report?.home ?? input.oddsHome ?? input.espnHome ?? 0.5;
   const total = input.total ?? leagueTotal(input.sport);
+  const venueMeans = applyVenueToMeans(
+    input.sport,
+    input.venue,
+    { windMph: input.weatherWind, precip: input.weatherPrecip, tempF: input.weatherTemp },
+    1,
+    1,
+  );
   let chaos = Math.max(0, Math.min(0.22, (total - leagueTotal(input.sport)) / (leagueTotal(input.sport) * 4)));
-  if (input.weatherWind != null && input.weatherWind >= 20) chaos += 0.05;
-  if (input.weatherPrecip != null && input.weatherPrecip >= 40) chaos += 0.03;
+  if (!venueMeans.enclosed && input.weatherWind != null && input.weatherWind >= 20) chaos += 0.05;
+  if (!venueMeans.enclosed && input.weatherPrecip != null && input.weatherPrecip >= 40) chaos += 0.03;
   const latent = latentFromScores({
     eventId: input.eventId,
     sport: input.sport,
@@ -36,15 +44,9 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
     marketHome: input.oddsHome,
     chaos,
   });
-  if (input.sport === "NFL" || input.sport === "NCAAF") {
-    if (input.weatherWind != null && input.weatherWind >= 20) {
-      latent.muH *= 0.97;
-      latent.muA *= 0.97;
-      latent.note = "Wind ≥ 20 mph cuts the air game and total. Passing-EPA modifier, not an ML party trick.";
-    } else if (input.weatherWind != null && input.weatherWind >= 12) {
-      latent.note = "Wind 12–19 mph: pass mean ×0.96, rush ×1.03, total −1.";
-    }
-  }
+  latent.muH *= venueMeans.muH;
+  latent.muA *= venueMeans.muA;
+  if (venueMeans.note) latent.note = venueMeans.note;
   const next = applyLiveRemaining(latent, {
     inPlay: input.inPlay,
     homeScore: input.homeScore,
