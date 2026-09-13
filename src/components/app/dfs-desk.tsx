@@ -15,7 +15,7 @@ import type { InactiveAlert, SalaryShift, SlateLineup } from "@/lib/market/types
 export function DfsDesk({ variant = "full" }: { variant?: "full" | "today" }) {
   const slate = useDeskStore((s) => s.slate);
   const contests = useDeskStore((s) => s.contests ?? []);
-  const liveBankroll = useDeskStore((s) => s.liveBankroll);
+ const liveBankroll = useDeskStore((s) => s.dfsBankroll || s.liveBankroll);
   const loadSampleSlate = useDeskStore((s) => s.loadSampleSlate);
   const rec = suggestContests(liveBankroll, contests);
   const { scan, snapshot } = useDeskDecision();
