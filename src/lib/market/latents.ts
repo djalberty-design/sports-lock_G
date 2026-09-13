@@ -8,6 +8,7 @@ import { latentFromScores, type GameLatent } from "./sim.ts";
 import { applyLiveRemaining } from "./live-state.ts";
 import { applyVenueToMeans } from "./venues.ts";
 import { applyRestToMeans } from "./rest.ts";
+import { applyAvailabilityToMeans } from "./availability.ts";
 
 export type LiveLatentFields = {
   inPlay?: boolean;
@@ -32,9 +33,27 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
     1,
     1,
   );
+  const restMeans = applyRestToMeans(
+    input.sport,
+    { start: input.start, homeRestDays: input.homeRestDays, awayRestDays: input.awayRestDays },
+    1,
+    1,
+  );
+  const avail = applyAvailabilityToMeans(
+    {
+      sport: input.sport,
+      homeOuts: input.homeOuts,
+      awayOuts: input.awayOuts,
+      homeQuestionable: input.homeQuestionable,
+      awayQuestionable: input.awayQuestionable,
+    },
+    1,
+    1,
+  );
   let chaos = Math.max(0, Math.min(0.22, (total - leagueTotal(input.sport)) / (leagueTotal(input.sport) * 4)));
   if (!venueMeans.enclosed && input.weatherWind != null && input.weatherWind >= 20) chaos += 0.05;
   if (!venueMeans.enclosed && input.weatherPrecip != null && input.weatherPrecip >= 40) chaos += 0.03;
+  chaos = Math.min(0.28, chaos + avail.chaosAdd);
   const latent = latentFromScores({
     eventId: input.eventId,
     sport: input.sport,
@@ -45,18 +64,10 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
     marketHome: input.oddsHome,
     chaos,
   });
-  latent.muH *= venueMeans.muH;
-  latent.muA *= venueMeans.muA;
-  if (venueMeans.note) latent.note = venueMeans.note;
-  const restMeans = applyRestToMeans(
-    input.sport,
-    { start: input.start, homeRestDays: input.homeRestDays, awayRestDays: input.awayRestDays },
-    latent.muH,
-    latent.muA,
-  );
-  latent.muH = restMeans.muH;
-  latent.muA = restMeans.muA;
-  if (restMeans.note) latent.note = [latent.note, restMeans.note].filter(Boolean).join(" ");
+  latent.muH *= venueMeans.muH * restMeans.muH * avail.muH;
+  latent.muA *= venueMeans.muA * restMeans.muA * avail.muA;
+  const note = [venueMeans.note, restMeans.note, avail.note].filter(Boolean).join(" ");
+  if (note) latent.note = note;
   const next = applyLiveRemaining(latent, {
     inPlay: input.inPlay,
     homeScore: input.homeScore,
