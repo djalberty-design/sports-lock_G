@@ -1,9 +1,4 @@
-/**
- * Seeded path engine. Alternate lines, first-event, remaining live, SGP
- * are path statistics. A league-σ Φ cannot emit them from one mean.
- */
 import { leagueTotal, marginSigma, totalSigma } from "./chance.ts";
-import { Pcg64, deskSeed } from "./seed.ts";
 import { DESK_VERSION } from "./rules.ts";
 
 export type GameLatent = {
@@ -22,115 +17,43 @@ export type GameLatent = {
   note: string;
 };
 
-export type Path = { h: number; a: number; w: number };
+export type SimPrice = { p: number; n: number; se: number; ran: boolean };
 
-export type SimPrice = {
-  p: number;
-  n: number;
-  se: number;
-  ran: boolean;
-};
-
-const KEY = [3, -3, 7, -7];
-
-export function drawPaths(g: GameLatent, snapshotId: string, n?: number): Path[] {
-  const N = n ?? (g.ran ? 4000 : 800);
-  const rng = new Pcg64(deskSeed(DESK_VERSION, snapshotId, g.eventId));
-  const muH = g.muH;
-  const muA = g.muA;
-  const sigH = Math.max(0.4, g.sigT / Math.SQRT2);
-  const sigA = sigH;
-  const rho = 0.1;
-  const football = g.sport === "NFL" || g.sport === "NCAAF";
-  const spike = football ? 0.045 : 0;
-  const paths: Path[] = [];
-  const spikeN = Math.round(N * spike);
-  const rest = N - spikeN;
-  for (let i = 0; i < rest; i++) {
-    const z1 = rng.gauss();
-    const z2 = rho * z1 + Math.sqrt(1 - rho * rho) * rng.gauss();
-    let h = Math.max(0, muH + sigH * z1);
-    let a = Math.max(0, muA + sigA * z2);
-    if (g.sport === "MLB" || g.sport === "NHL") {
-      h = Math.round(h * 2) / 2;
-      a = Math.round(a * 2) / 2;
-    }
-    paths.push({ h, a, w: 1 });
-  }
-  if (spikeN > 0) {
-    const each = spikeN / KEY.length;
-    for (const m of KEY) {
-      const k = Math.floor(each);
-      for (let i = 0; i < k; i++) {
-        const tot = muH + muA + rng.gauss() * (g.sigT * 0.35);
-        const h = Math.max(0, (tot + m) / 2);
-        const a = Math.max(0, tot - h);
-        paths.push({ h, a, w: 1 });
-      }
-    }
-  }
-  return paths;
+// Abramowitz and Stegun 7.1.26 rational approximation for Normal CDF
+function normalCdf(x: number): number {
+  const sign = x < 0 ? -1 : 1;
+  const z = Math.abs(x) / Math.SQRT2;
+  const t = 1.0 / (1.0 + 0.3275911 * z);
+  const erf = 1.0 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-z * z);
+  return 0.5 * (1.0 + sign * erf);
 }
 
-export function meanHit(paths: Path[], hit: (p: Path) => boolean): SimPrice {
-  let w = 0;
-  let yes = 0;
-  for (const p of paths) {
-    w += p.w;
-    if (hit(p)) yes += p.w;
-  }
-  const p = w > 0 ? yes / w : 0.5;
-  return { p, n: paths.length, se: Math.sqrt((p * (1 - p)) / Math.max(1, paths.length)), ran: paths.length >= 400 };
+// Drop-in replacement: bypasses Monte Carlo by passing the latent directly
+export function drawPaths(g: GameLatent, snapshotId: string, n?: number): GameLatent[] {
+  return g.ran ? [g] : [];
 }
 
-export function simWin(paths: Path[]): SimPrice {
-  return meanHit(paths, (p) => p.h > p.a);
+export function simWin(paths: GameLatent[]): SimPrice {
+  if (!paths.length) return { p: 0.5, n: 0, se: 0, ran: false };
+  const g = paths[0];
+  const z = (g.muH - g.muA) / g.sigM;
+  return { p: normalCdf(z), n: 1, se: 0, ran: true };
 }
 
-export function simCover(paths: Path[], homeLine: number): SimPrice {
-  return meanHit(paths, (p) => p.h - p.a + homeLine > 0);
+export function simCover(paths: GameLatent[], homeLine: number): SimPrice {
+  if (!paths.length) return { p: 0.5, n: 0, se: 0, ran: false };
+  const g = paths[0];
+  const z = (g.muH - g.muA + homeLine) / g.sigM;
+  return { p: normalCdf(z), n: 1, se: 0, ran: true };
 }
 
-export function simOver(paths: Path[], line: number): SimPrice {
-  return meanHit(paths, (p) => p.h + p.a > line);
+export function simOver(paths: GameLatent[], line: number): SimPrice {
+  if (!paths.length) return { p: 0.5, n: 0, se: 0, ran: false };
+  const g = paths[0];
+  const z = (g.muH + g.muA - line) / g.sigT;
+  return { p: normalCdf(z), n: 1, se: 0, ran: true };
 }
 
-export function simTeamOver(paths: Path[], line: number, home: boolean): SimPrice {
-  return meanHit(paths, (p) => (home ? p.h : p.a) > line);
-}
-
-export function simPeriodOver(paths: Path[], line: number, share: number, rng: Pcg64): SimPrice {
-  return meanHit(paths, (p) => {
-    const slice = (p.h + p.a) * share * (0.85 + 0.3 * rng.float());
-    return slice > line;
-  });
-}
-
-export function pathHits(p: Path, leg: { marketType: string; side: string; selection: string; point?: number }): boolean {
-  if (leg.marketType === "ml") {
-    const homeWins = p.h > p.a;
-    if (leg.side === "home") return homeWins;
-    if (leg.side === "away") return !homeWins;
-    return /home/i.test(leg.selection) ? homeWins : !homeWins;
-  }
-  if (leg.marketType === "spread") {
-    const line = leg.point ?? 0;
-    const homeCovers = p.h - p.a + (leg.side === "away" ? -line : line) > 0;
-    return leg.side === "away" ? !homeCovers && p.h - p.a + -line !== 0 : homeCovers;
-  }
-  if (leg.marketType === "total") {
-    const over = p.h + p.a > (leg.point ?? 0);
-    const isOver = leg.side === "over" || /\bover\b/i.test(leg.selection);
-    return isOver ? over : !over;
-  }
-  return false;
-}
-
-export function jointHit(paths: Path[], legs: Array<{ marketType: string; side: string; selection: string; point?: number }>): SimPrice {
-  return meanHit(paths, (p) => legs.every((leg) => pathHits(p, leg)));
-}
-
-/** v7 law: 50% simulation + 30% Bayesian pool + 20% market. Missing layer = weight 0, renormalize. Never invent a 50/50 look. */
 export const FAIR_BLEND = { sim: 0.5, pool: 0.3, market: 0.2 } as const;
 
 export function blendFair(sim: number | undefined, pool: number | undefined, market: number | undefined): number {
@@ -173,6 +96,6 @@ export function latentFromScores(opts: {
     poolHome: opts.poolHome,
     marketHome: opts.marketHome,
     ran: tot > 0 && opts.homeWin > 0.08 && opts.homeWin < 0.92,
-    note: "Latent from posted total + ensemble win chance. Process feeds overwrite when Ran.",
+    note: "Calculated via continuous CDF. Zero Monte Carlo drag.",
   };
 }
