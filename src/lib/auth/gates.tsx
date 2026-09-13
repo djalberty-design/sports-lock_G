@@ -36,7 +36,7 @@ export function SignInGate({
   const state = resolveSignInGateState({ isPending, hasUser: user !== null });
   if (state === "pending") return null;
   if (state === "signed_in") return <>{children}</>;
-  return <>{fallback ?? <SignInButtons />}</>;
+  return <>{fallback ?? null}</>;
 }
 
 export function SignInButtons() {
@@ -67,7 +67,7 @@ export function UserButton() {
   if (!user) {
     return (
       <Link to="/login" className="min-h-11 px-3 text-sm font-medium text-muted hover:text-ink">
-        Sign in
+        Owner
       </Link>
     );
   }
