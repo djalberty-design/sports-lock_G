@@ -6,6 +6,7 @@ import { liveFromRow } from "@/lib/market/live-state";
 import { SportFilter } from "./sport-filter";
 import { PickCard } from "./pick-card";
 import { PhotoWagerCta } from "./photo-wager-cta";
+import { LiveBanner } from "./live-stamp";
 import { Link } from "@tanstack/react-router";
 
 export function LivePage() {
@@ -65,6 +66,7 @@ export function LivePage() {
       </header>
 
       <SportFilter sports={sports} />
+      {live[0]?.row ? <LiveBanner row={live[0].row} /> : null}
 
       {query.isError ? (
         <p className="rounded-md bg-wash-gold px-4 py-3 text-sm text-gold">
