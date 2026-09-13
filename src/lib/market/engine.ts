@@ -32,7 +32,6 @@ export const COMBO_SEED_CAP = DEFAULT_COMBO_LEG_CAP;
 let activeKelly = 1;
 let activeComboCap = COMBO_SEED_CAP;
 
-
 export function americanToImplied(odds: number): number {
   if (!Number.isFinite(odds)) return NaN;
   if (odds >= 0) return 100 / (odds + 100);
@@ -75,7 +74,6 @@ export function unitDollars(bankroll: number, unitPct: number): number {
   return floorToCent(bankroll * unitPct);
 }
 
-/** Core 85% / Fun 15%. Core ticket is 1% of core. Fun flyers $1–$3. */
 export function coreFunSplit(bankroll: number): {
   core: number;
   fun: number;
@@ -336,10 +334,6 @@ export function payoutMultiple(price: number): number {
   return price >= 0 ? price / 100 : 100 / Math.abs(price);
 }
 
-/**
- * Chance and payout together. A −400 favorite with an 80% chance scores worse
- * than a 58% ticket at −110, because the favorite pays almost nothing.
- */
 export function valueScore(chance: number, price: number): number {
   if (!Number.isFinite(chance) || chance <= 0 || !Number.isFinite(price)) return -99;
   const pay = payoutMultiple(price);
@@ -382,7 +376,6 @@ export function pickBestMain(rows: ScanRow[]): ScanRow | null {
   return [...ranked].sort(byValue)[0] ?? null;
 }
 
-/** Always name a one-game ticket when today has anything legal. Never a later-week game. */
 export function pickAnyMain(rows: ScanRow[]): ScanRow | null {
   const best = pickBestMain(rows);
   if (best) return best;
@@ -391,7 +384,6 @@ export function pickAnyMain(rows: ScanRow[]): ScanRow | null {
   return [...pool].sort(byValue)[0] ?? null;
 }
 
-/** Plus-money toss-up playing today: about 50/50, still pays more than even money. */
 export function pickCoinFlip(rows: ScanRow[], excludeEventIds: string[] = []): ScanRow | null {
   const legal = rows.filter(
     (r) =>
@@ -427,19 +419,9 @@ function sameGameJoint(legs: ScanRow[]): number | undefined {
   if (!legs.every((l) => l.marketType === "ml" || l.marketType === "spread" || l.marketType === "total")) {
     return undefined;
   }
-  const row = legs[0]!;
-  const ml = legs.find((l) => l.marketType === "ml" && l.side === "home");
-  const homeWin = ml?.fairProb ?? (row.side === "home" ? row.fairProb : 1 - row.fairProb);
-  const latent = latentFromScores({
-    eventId: row.eventId,
-    sport: row.sport,
-    homeWin: Number.isFinite(homeWin) ? homeWin : 0.5,
-    total: row.total ?? 0,
-    homeSpread: row.homeSpread,
-  });
-  if (!latent.ran) return undefined;
-  const paths = drawPaths(latent, row.eventId);
-  return jointHit(paths, legs).p;
+  
+  const rho = sameGameRho(legs);
+  return jointFromLegs(legs.map((l) => l.fairProb), rho);
 }
 
 function parlayLegal(legs: ScanRow[], mode: ParlayMode = "ribbon"): { ok: true } | { ok: false; reason: string } {
@@ -519,8 +501,6 @@ export function evaluateParlay(
     : sameGame
       ? jointFromLegs(legs.map((l) => l.fairProb), rho)
       : product(legs.map((l) => l.fairProb));
-  // Sim Ran = joint path. Same-game without sim = Fréchet (not a dummy 50/50). Cross-game = product.
-  // Haircut table remains only as a Thin fallback stamp when sim could not emit.
   const combinedFair = Math.min(0.97, usedSim || sameGame ? rawFair : rawFair * hair);
   const juice = typicalParlayJuice(legs.length);
   const ev =
@@ -847,7 +827,10 @@ function applyEnsemble(rows: ScanRow[], snapshot: DeskSnapshot): ScanRow[] {
     const report = built.layers;
     const process = processFromLooks(row.sport, chanceInput.homeLooks, chanceInput.awayLooks);
     const simOk = Boolean(built.latent.ran);
+    
+    // Updated line: drawPaths now returns the latent directly, no Monte Carlo loops
     const paths = simOk ? drawPaths(built.latent, eventSeed(snapshot, eventId, built.latent.pWinH)) : [];
+    
     const simHome = simOk ? simWin(paths) : { p: undefined as number | undefined, ran: false };
     const usage = buildUsage({
       eventId,
@@ -982,7 +965,6 @@ export function canPlacePaper(opts: {
   maxTicketPct?: number;
 }): { ok: true } | { ok: false; error: string } {
   const dust = opts.dustUsd ?? DEFAULTS.dustUsd;
-  // Paper desk — never place a real bet, so no daily stop, weekly stop, or ticket-size cap.
   void opts.halted;
   void opts.maxTicketPct;
   if (opts.stake < dust) {
