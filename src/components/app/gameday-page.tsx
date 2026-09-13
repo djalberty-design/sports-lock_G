@@ -4,7 +4,7 @@ import { pickHero, pickInSport, sortByMood, type DeskPick } from "@/lib/market/p
 import { useDeskStore, selectUnit } from "@/lib/desk-store";
 import { formatBetUsd, formatChancePct, sportLabel } from "@/lib/copy";
 import { coreFunSplit } from "@/lib/market/engine";
-import { feeBadge, timingKind, TIMING_COPY, earlyMover } from "@/lib/market/edge";
+import { feeBadge, timingKind, TIMING_COPY } from "@/lib/market/edge";
 import { formatAmerican, formatKickoff } from "@/lib/utils";
 import { isCollegeSport } from "@/lib/market/universe";
 import { Camera } from "lucide-react";
@@ -54,7 +54,6 @@ export function GamedayPage() {
               tapeLean: p.tapeLean,
               favorite: (p.price ?? 0) < 0,
             });
-            const early = Boolean(p.earlyMover) || earlyMover(p.chance, p.predictHome);
             return (
               <li key={p.id} className="paper-card p-5">
                 <p className="stamp text-gold">
@@ -83,7 +82,7 @@ export function GamedayPage() {
                   {timing ? (
                     <span className="rounded-sm bg-wash-gold px-2 py-1 text-xs text-gold">{TIMING_COPY[timing].title}</span>
                   ) : null}
-                  {early ? (
+                  {p.earlyMover ? (
                     <span className="rounded-sm bg-wash-gold px-2 py-1 text-xs text-gold">Early Mover Advantage</span>
                   ) : null}
                 </div>
