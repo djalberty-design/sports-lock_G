@@ -5,6 +5,26 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
+function insertAfterImports(text, stmt) {
+  if (text.includes(stmt)) return text;
+  const lines = text.split("\n");
+  let last = -1;
+  let pending = false;
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (/^import\s/.test(l)) {
+      pending = !/;/.test(l);
+      last = i;
+    } else if (pending) {
+      last = i;
+      if (/;/.test(l)) pending = false;
+    }
+  }
+  if (last < 0) throw new Error("patch-venues: no import block");
+  lines.splice(last + 1, 0, stmt);
+  return lines.join("\n");
+}
+
 function patchSheet() {
   const dest = join(ROOT, "src/lib/market/sheet.ts");
   let text = readFileSync(dest, "utf8");
@@ -12,12 +32,7 @@ function patchSheet() {
     console.log("patch-venues sheet: already wired");
     return;
   }
-  const importNeedle = text.match(/^import .*$/m);
-  if (!importNeedle) throw new Error("patch-venues: sheet has no import");
-  text = text.replace(
-    importNeedle[0],
-    `${importNeedle[0]}\nimport { venueHits, venueHr, venueWeatherMul } from "./venues.ts";`,
-  );
+  text = insertAfterImports(text, 'import { venueHits, venueHr, venueWeatherMul } from "./venues.ts";');
   const hits = `function parkHits(venue?: string): number {
   return parkLookup(venue, PARK_HITS, 1);
 }`;
@@ -59,12 +74,7 @@ function patchProps() {
     console.log("patch-venues props: already wired");
     return;
   }
-  const importNeedle = text.match(/^import .*$/m);
-  if (!importNeedle) throw new Error("patch-venues: props has no import");
-  text = text.replace(
-    importNeedle[0],
-    `${importNeedle[0]}\nimport { lookupVenue, venueHits } from "./venues.ts";`,
-  );
+  text = insertAfterImports(text, 'import { lookupVenue, venueHits } from "./venues.ts";');
   const old = `function parkHits(venue?: string): number | null {
   if (!venue) return null;
   const key = venue.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
