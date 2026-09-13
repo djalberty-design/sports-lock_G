@@ -5,6 +5,7 @@
  * A weak layer's 10% haircut waits for a DESK_VERSION bump — it does not rewrite tonight.
  */
 import { brierScore, layerPrecisionHaircut, rollingWindow } from "./brier.ts";
+import { reliabilityTable, setReliabilityTable, type ReliabilityBucket } from "./calibrate.ts";
 import type { BetLedgerEntry } from "../ledger.ts";
 
 export const LEDGER_WINDOW = 50;
@@ -36,4 +37,14 @@ export function pendingLayerHaircuts(entries: BetLedgerEntry[]): { layerId: stri
   return ids
     .map((layerId) => ({ layerId, haircut: layerPrecisionHaircut(layerId, rows) }))
     .filter((x) => x.haircut < 1);
+}
+
+export function reliabilityFromLedger(entries: BetLedgerEntry[]): ReliabilityBucket[] {
+  return reliabilityTable(settledForecasts(entries));
+}
+
+export function activateLedgerReliability(entries: BetLedgerEntry[]): ReliabilityBucket[] {
+  const table = reliabilityFromLedger(entries);
+  setReliabilityTable(table);
+  return table;
 }
