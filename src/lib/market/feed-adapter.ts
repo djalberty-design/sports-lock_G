@@ -114,6 +114,57 @@ export async function getNflPlayerVolume(eventId: string): Promise<PlayerVolumeB
 }
 
 /**
+ * MLB Player Volume Parser
+ * Extracts expected plate appearances and pitcher strikeout rates from the free MLB Stats API.
+ */
+export async function getMlbPlayerVolume(eventId: string): Promise<PlayerVolumeBaseline[]> {
+  const url = `https://statsapi.mlb.com/api/v1.1/game/${eventId}/feed/live`;
+  
+  const { data } = await fetchWithWatchdog(url, (json) => {
+    const boxscore = json?.liveData?.boxscore?.teams;
+    if (!boxscore) throw new Error("Missing MLB boxscore data");
+    
+    const baselines: PlayerVolumeBaseline[] = [];
+    
+    for (const side of ["away", "home"]) {
+      const players = boxscore[side as keyof typeof boxscore]?.players;
+      if (!players) continue;
+      
+      for (const key in players) {
+        const player = players[key];
+        const stats = player.seasonStats;
+        if (!stats) continue;
+        
+        if (player.position.code === "1") {
+          // Pitcher: targetShare = Expected Innings, epaPerPlay = Strikeouts per Inning
+          baselines.push({
+            playerId: String(player.person.id),
+            playerName: player.person.fullName,
+            targetShare: 5.5, 
+            routeParticipation: 0,
+            redZoneSnapPct: 0,
+            epaPerPlay: stats.pitching?.strikeOutsPer9Inn ? Number(stats.pitching.strikeOutsPer9Inn) / 9 : 1.0
+          });
+        } else {
+          // Batter: targetShare = Expected Plate Appearances, epaPerPlay = OBP proxy for xwOBA
+          baselines.push({
+            playerId: String(player.person.id),
+            playerName: player.person.fullName,
+            targetShare: 4.2, 
+            routeParticipation: 0,
+            redZoneSnapPct: 0,
+            epaPerPlay: stats.batting?.obp ? Number(stats.batting.obp) : 0.320 
+          });
+        }
+      }
+    }
+    return baselines;
+  }, "MLB Stats API");
+
+  return data ?? [];
+}
+
+/**
  * Advanced Process Metrics (EPA / xwOBA) Stub
  */
 export async function getAdvancedProcess(sport: string, teamId: string): Promise<TeamLooks | undefined> {
