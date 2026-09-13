@@ -24,7 +24,7 @@ function patch(rel, pairs) {
 }
 
 patch("src/components/app/ticket-page.tsx", [
-  ['import { ScreenshotIngest, PhotoFirstNote } from "./screenshot-ingest";', 'import { HardRockConfirm } from "./hard-rock-confirm";'],
+  ['import { ScreenshotIngest, PhotoFirstNote } from "./screenshot-ingest";', 'import { PhotoFirstNote } from "./screenshot-ingest";\nimport { HardRockConfirm } from "./hard-rock-confirm";'],
   [
     "<ScreenshotIngest kind=\"ticket\" heading={`Upload a screenshot of ${pick.selection}`} />",
     "<HardRockConfirm pick={pick} heading={`Confirm ${pick.selection} at Hard Rock`} />",
@@ -70,8 +70,6 @@ patch("src/components/app/game-page.tsx", [
 const game = join(ROOT, "src/components/app/game-page.tsx");
 let g = readFileSync(game, "utf8");
 if (!g.includes("<HardRockConfirm")) {
-  const oldG = `        <ScreenshotIngest\n          kind="ticket"\n          heading={\n            liveWager\n              ? \`Upload a screenshot of \${shortPick(liveWager.selection, liveWager.marketType)}\`\n              : "Upload a screenshot of this same-game parlay"\n          }\n        />`;
-  const newG = `        <HardRockConfirm\n          row={liveWager ?? undefined}\n          heading={\n            liveWager\n              ? \`Confirm \${shortPick(liveWager.selection, liveWager.marketType)} at Hard Rock\`\n              : "Confirm this same-game parlay at Hard Rock"\n          }\n        />`;
   if (!g.includes("Upload a screenshot of this same-game parlay")) {
     console.error("patch-manual-lock-ui game-page: body snippet missing");
     process.exit(1);
