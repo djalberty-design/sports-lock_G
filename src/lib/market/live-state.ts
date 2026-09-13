@@ -1,7 +1,3 @@
-/**
- * Live state machine S. Pre-tip is empty. Missing critical fields → micro stand-down.
- */
-
 import { normalCdf, totalSigma } from "./chance.ts";
 
 export type LiveState = {
@@ -36,7 +32,7 @@ export function emptyLive(eventId: string, sport: string, inPlay: boolean): Live
     inPlay,
     complete: false,
     note: inPlay
-      ? "Looked up live state. Clock started but down/outs/strength not posted. Microbets stand down."
+      ? "Looked up live state. Clock started but down/outs/strength not posted."
       : "Pre-tip. Live state empty.",
     empty: true,
     thin: true,
@@ -85,7 +81,7 @@ export function parseLiveState(opts: {
     strength,
     note: complete
       ? `Live ${opts.sport}: ${opts.awayScore ?? "—"}–${opts.homeScore ?? "—"} ${opts.period ?? ""} ${opts.clock ?? ""}`.trim()
-      : "Live clock is on. Critical field missing — microbets stand down. Remaining full-game tickets use leftover mean when we have score.",
+      : "Live clock is on. Critical field missing.",
     empty: false,
     thin: !complete,
   };
@@ -100,7 +96,6 @@ function num(v: unknown): number | undefined {
   return undefined;
 }
 
-/** Remaining mean for a live counting prop. Kneel-down law: leftover cannot exceed what the clock allows. */
 export function remainingMean(finalMean: number, already: number, clockFractionLeft: number): number {
   const left = Math.max(0.02, Math.min(1, clockFractionLeft));
   const rem = Math.max(0, finalMean - already);
@@ -115,7 +110,6 @@ function parseClockMinutes(clock?: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-/** Remaining fraction of the game, from period + clock. Missing clock → 0.5 Thin, not invented 0. */
 export function clockFractionLeft(sport: string, period?: string | number, clock?: string): number {
   const mins = parseClockMinutes(clock);
   const p = Number(period);
@@ -144,7 +138,7 @@ export function clockFractionLeft(sport: string, period?: string | number, clock
   return 0.5;
 }
 
-/** P(final > line) from leftover mean, not a haircut of the pre-game %. */
+// Upgraded: Exponential time-scaling for late-game volatility decay
 export function leftoverOverProb(opts: {
   sport: string;
   postedTotal: number;
@@ -155,8 +149,13 @@ export function leftoverOverProb(opts: {
   const frac = clockFractionLeft(opts.sport, opts.period, opts.clock);
   const rem = remainingMean(opts.postedTotal, opts.already, frac);
   const need = opts.postedTotal - opts.already;
+  
   if (need <= 0) return 0.99;
-  const sigma = Math.max(0.35, totalSigma(opts.sport) * Math.sqrt(Math.max(0.08, frac)));
+  
+  // Variance shrinks exponentially faster than time remaining
+  const timeScale = Math.pow(Math.max(0.05, frac), 0.85); 
+  const sigma = Math.max(0.25, totalSigma(opts.sport) * Math.sqrt(timeScale));
+  
   const z = (need - rem) / sigma;
   const pOver = 1 - normalCdf(z);
   return Math.min(0.99, Math.max(0.01, pOver));
