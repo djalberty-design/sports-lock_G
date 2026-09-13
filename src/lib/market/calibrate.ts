@@ -1,6 +1,7 @@
 /**
  * Displayed chance. Ranking still uses raw fair / combinedFair.
  * Pull the public integer toward the juice on noisy markets.
+ * No book posted ↔ do not invent a 50/50 and shrink toward it.
  */
 export function calibratedChance(fair: number, implied: number | undefined, quality: number): number {
   if (!Number.isFinite(fair)) return 0.5;
@@ -9,7 +10,7 @@ export function calibratedChance(fair: number, implied: number | undefined, qual
   if (implied != null && Number.isFinite(implied) && implied > 0.02 && implied < 0.98) {
     shown = implied + (fair - implied) * (0.35 + 0.65 * q);
   } else {
-    shown = 0.5 + (fair - 0.5) * (0.4 + 0.6 * q);
+    shown = fair;
   }
   return Math.min(0.99, Math.max(0.01, shown));
 }
