@@ -3,6 +3,21 @@
  * Cross-game legs stay a clean product.
  */
 
+// Global ledger calibration cache (populated by Phase 5 ledger sync)
+export const COPULA_CALIBRATION = {
+  mlSpreadSame: 0.65,
+  mlSpreadOpp: -0.45,
+  totalSame: 0.25,
+  totalUnder: -0.35,
+  propOver: 0.55,
+  propUnder: 0.45,
+  propMixed: -0.40,
+};
+
+export function updateCopulaCalibration(empiricalData: Partial<typeof COPULA_CALIBRATION>) {
+  Object.assign(COPULA_CALIBRATION, empiricalData);
+}
+
 export function claytonJoint(pA: number, pB: number, theta: number): number {
   const a = clip01(pA);
   const b = clip01(pB);
@@ -22,14 +37,11 @@ export function claytonJoint(pA: number, pB: number, theta: number): number {
   }
 }
 
-export function jointFromLegs(
-  probs: number[],
-  rho: number,
-): number {
+export function jointFromLegs(probs: number[], rho: number): number {
   if (probs.length === 0) return 0;
   if (probs.length === 1) return clip01(probs[0]!);
   
-  // Map linear correlation rho [-1, 1] to Clayton theta
+  // Dynamic Theta mapping based on continuous empirical correlation
   const theta = rho >= 0 ? (2 * rho) / (1 - rho + 0.01) : rho * 2;
   
   let p = clip01(probs[0]!);
@@ -39,28 +51,40 @@ export function jointFromLegs(
   return p;
 }
 
-export function sameGameRho(legs: { marketType: string; side: string }[]): number {
+export function sameGameRho(legs: { marketType: string; side: string; fairProb?: number }[]): number {
   if (legs.length < 2) return 0;
   const types = new Set(legs.map((l) => l.marketType));
   const sides = new Set(legs.map((l) => l.side));
   const mlSpread = types.has("ml") && types.has("spread");
   
-  if (mlSpread && sides.size === 1) return 0.65; 
-  if (mlSpread && sides.size > 1) return -0.45;
+  let baseRho = 0;
   
-  if (types.has("total") && (types.has("ml") || types.has("spread"))) {
+  if (mlSpread && sides.size === 1) baseRho = COPULA_CALIBRATION.mlSpreadSame;
+  else if (mlSpread && sides.size > 1) baseRho = COPULA_CALIBRATION.mlSpreadOpp;
+  else if (types.has("total") && (types.has("ml") || types.has("spread"))) {
     const tot = legs.find((l) => l.marketType === "total");
-    if (tot?.side === "under") return -0.35;
-    return 0.25;
-  }
-  
-  if (types.has("prop")) {
+    baseRho = tot?.side === "under" ? COPULA_CALIBRATION.totalUnder : COPULA_CALIBRATION.totalSame;
+  } else if (types.has("prop")) {
     const overs = legs.filter((l) => /over/i.test(l.side)).length;
-    if (overs === legs.length) return 0.55; // High tail dependence for correlated overs
-    if (overs === 0) return 0.45;
-    return -0.40;
+    if (overs === legs.length) baseRho = COPULA_CALIBRATION.propOver;
+    else if (overs === 0) baseRho = COPULA_CALIBRATION.propUnder;
+    else baseRho = COPULA_CALIBRATION.propMixed;
+  } else {
+    baseRho = 0.35;
   }
-  return 0.35;
+
+  // Dynamic adjustment: Marginal probability distance scaling
+  // Highly confident favorites have tighter correlation to their spread than coin-flips
+  if (legs[0]?.fairProb && legs[1]?.fairProb) {
+    const p1 = clip01(legs[0].fairProb);
+    const p2 = clip01(legs[1].fairProb);
+    const distance = Math.abs(p1 - p2);
+    // Shrink correlation if marginals are wildly disconnected, boost if tightly aligned
+    const dynamicModifier = 1 - (distance * 0.5);
+    baseRho *= dynamicModifier;
+  }
+
+  return Math.max(-0.95, Math.min(0.95, baseRho));
 }
 
 /** 
@@ -72,11 +96,10 @@ export function growthScore(pJoint: number, decimalPayout: number, infoQuality: 
   const b = Math.max(0.01, decimalPayout - 1);
   const q = Number.isFinite(infoQuality) ? Math.max(0, Math.min(1, infoQuality)) : 0.5;
   
-  // Standard Kelly
   let kelly = Math.max(0, (p * b - (1 - p)) / b);
   
-  // Simultaneous variance dampening (approximation for overlapping slate exposure)
-  const covariancePenalty = 1 + (0.15 * q);
+  // Dynamic covariance penalty based on exact joint probability
+  const covariancePenalty = 1 + (0.15 * q * Math.sqrt(p));
   kelly = kelly / covariancePenalty;
 
   const frac = Number.isFinite(kellyMultiplier) ? Math.max(0, Math.min(2, kellyMultiplier)) : 1;
