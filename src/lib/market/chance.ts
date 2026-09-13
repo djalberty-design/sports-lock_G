@@ -16,6 +16,7 @@ import { analyzeScores, earlySeasonDamp, ewmaWeights, formTrend, splitByVenue, v
 import { defenseAllowed, processFromLooks, underlyingOffense, underlyingPitch, type TeamLooks } from "./looks.ts";
 import { lookupVenue, weatherAtVenue } from "./venues.ts";
 import { restEffect } from "./rest.ts";
+import { type PlayerVolumeBaseline } from "./feed-adapter.ts";
 
 export type FormGame = {
   date?: string;
@@ -700,4 +701,48 @@ export function poissonCdf(k: number, lambda: number): number {
 export function poissonOver(lambda: number, line: number): number {
   const k = Math.floor(line);
   return invLogit(logit(1 - poissonCdf(k, Math.max(0.02, lambda))), 0.06, 0.94);
+}
+/**
+ * Prices a discrete player prop (e.g., Receptions, Touchdowns) using the Poisson distribution.
+ */
+export function priceDiscretePlayerProp(
+  propType: string,
+  line: number,
+  baseline: PlayerVolumeBaseline,
+  teamExpectedPace: number
+): { overProb: number; underProb: number } {
+  const mu = calculatePlayerPropMean(propType, baseline, teamExpectedPace);
+  
+  if (mu === 0) return { overProb: 0.5, underProb: 0.5 }; // Empty Look fallback
+  
+  const probOver = poissonOver(mu, line);
+  return {
+    overProb: probOver,
+    underProb: 1 - probOver
+  };
+}
+
+/**
+ * Prices a continuous player prop (e.g., Receiving Yards) using the Normal CDF.
+ */
+export function priceContinuousPlayerProp(
+  propType: string,
+  line: number,
+  baseline: PlayerVolumeBaseline,
+  teamExpectedPace: number
+): { overProb: number; underProb: number } {
+  const mu = calculatePlayerPropMean(propType, baseline, teamExpectedPace);
+  
+  if (mu === 0) return { overProb: 0.5, underProb: 0.5 };
+  
+  // Standard deviation scales sub-linearly with expected volume
+  const sigma = Math.max(4, Math.sqrt(mu) * 3.5); 
+  
+  const z = (line - mu) / sigma;
+  const underProb = normalCdf(z);
+  
+  return {
+    overProb: 1 - underProb,
+    underProb: underProb
+  };
 }
