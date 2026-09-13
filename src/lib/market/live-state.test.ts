@@ -36,3 +36,16 @@ test("live without a score keeps pregame G and marks thin", () => {
   assert.equal(live.muH, pre.muH);
   assert.match(live.note, /Score missing/);
 });
+
+test("kickoff already passed rebuilds remaining G even without the inPlay flag", () => {
+  const pre = latentFromScores({ eventId: "nfl-started", sport: "NFL", homeWin: 0.5, total: 44.5 });
+  const live = applyLiveRemaining(pre, {
+    start: "2020-01-01T00:00:00.000Z",
+    homeScore: 21,
+    awayScore: 10,
+    period: "3",
+    clock: "8:00",
+  });
+  assert.match(live.note, /Live remaining G/);
+  assert.ok(live.muH !== pre.muH || live.muA !== pre.muA);
+});
