@@ -130,14 +130,14 @@ export function jointHit(paths: Path[], legs: Array<{ marketType: string; side: 
   return meanHit(paths, (p) => legs.every((leg) => pathHits(p, leg)));
 }
 
-/** v7: 50% market + 30% simulation + 20% Bayesian pool. Missing layer = weight 0, renormalize. Never invent a 50/50 look. */
-export const FAIR_BLEND = { market: 0.5, sim: 0.3, pool: 0.2 } as const;
+/** v7 law: 50% simulation + 30% Bayesian pool + 20% market. Missing layer = weight 0, renormalize. Never invent a 50/50 look. */
+export const FAIR_BLEND = { sim: 0.5, pool: 0.3, market: 0.2 } as const;
 
 export function blendFair(sim: number | undefined, pool: number | undefined, market: number | undefined): number {
   const parts: { w: number; v: number }[] = [];
-  if (market != null && Number.isFinite(market)) parts.push({ w: FAIR_BLEND.market, v: market });
   if (sim != null && Number.isFinite(sim)) parts.push({ w: FAIR_BLEND.sim, v: sim });
   if (pool != null && Number.isFinite(pool)) parts.push({ w: FAIR_BLEND.pool, v: pool });
+  if (market != null && Number.isFinite(market)) parts.push({ w: FAIR_BLEND.market, v: market });
   if (!parts.length) return 0.5;
   const w = parts.reduce((s, p) => s + p.w, 0);
   return parts.reduce((s, p) => s + (p.w / w) * p.v, 0);
