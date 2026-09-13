@@ -208,3 +208,33 @@ export function liveQuality(base: number, s: LiveState | undefined, completeness
   }
   return Math.max(0.28, base * floor);
 }
+import type { GameLatent } from "./sim.ts";
+
+export function applyLiveRemaining(
+  g: GameLatent,
+  live: { inPlay?: boolean; homeScore?: number; awayScore?: number; period?: string; clock?: string }
+): GameLatent {
+  if (!live.inPlay || live.homeScore == null || live.awayScore == null) return g;
+  
+  const frac = clockFractionLeft(g.sport, live.period, live.clock);
+  
+  const newMuH = live.homeScore + remainingMean(g.muH, live.homeScore, frac);
+  const newMuA = live.awayScore + remainingMean(g.muA, live.awayScore, frac);
+  
+  const timeScale = sportVarianceScale(g.sport, frac);
+  const newSigM = Math.max(0.25, g.sigM * Math.sqrt(timeScale));
+  const newSigT = Math.max(0.25, g.sigT * Math.sqrt(timeScale));
+  
+  const z = (newMuH - newMuA) / newSigM;
+  const pWinH = 1 - normalCdf(z); 
+
+  return {
+    ...g,
+    muH: newMuH,
+    muA: newMuA,
+    sigM: newSigM,
+    sigT: newSigT,
+    pWinH,
+    note: `${g.note} | Live remaining points applied.`.trim(),
+  };
+}
