@@ -8,6 +8,7 @@ import { DK_CAP, detectSalaryShifts, optimizeSlate, parseSlateTable, sampleNflSl
 import type { ContestOffer, PaperTicket, ParsedTicket, SlateBundle } from "./market/types";
 import type { DeskMood } from "./market/picks";
 import { DEFAULTS } from "./market/universe";
+import { isCollegePlayerBet } from "./market/florida";
 import { etParts, startOfEtWeekMonday } from "./utils";
 
 export type PlacePaperInput = Omit<PaperTicket, "id" | "createdAt" | "venue"> & {
@@ -311,11 +312,12 @@ export const useDeskStore = create<DeskState>()(
       setSlate: (slate) => set({ slate }),
       setContests: (contests) => set({ contests }),
       addParlayLeg: (leg) => {
+        if (isCollegePlayerBet(leg)) return;
         set({ parlayLegs: [leg, ...get().parlayLegs.filter((x) => x.key !== leg.key)].slice(0, 8) });
       },
       removeParlayLeg: (key) => set({ parlayLegs: get().parlayLegs.filter((x) => x.key !== key) }),
       clearParlay: () => set({ parlayLegs: [] }),
-      setParlayLegs: (parlayLegs) => set({ parlayLegs: parlayLegs.slice(0, 8) }),
+      setParlayLegs: (parlayLegs) => set({ parlayLegs: parlayLegs.filter((l) => !isCollegePlayerBet(l)).slice(0, 8) }),
       setSportFilter: (sport) => set({ sportFilter: sport || "ALL" }),
       confirmSlateFromTable: (table, sport) => {
         const players = parseSlateTable(table, sport).map((p) => ({ ...p, confirmed: true }));
