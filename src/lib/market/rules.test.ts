@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { ALGORITHM_RULES, DESK_VERSION, ruleFired, ruleStamp, rulesFor } from "./rules.ts";
 
 test("desk version is pinned so two boards cannot silently disagree", () => {
-  assert.equal(DESK_VERSION, "2026.09.10-master-v6");
+  assert.equal(DESK_VERSION, "2026.09.13-master-v9");
 });
 
 test("the rule list is the same every time and covers every ticket type", () => {

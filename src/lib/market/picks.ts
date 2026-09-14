@@ -18,6 +18,8 @@ import { deskScore, parlayScore } from "./tape.ts";
 import { isCollegeSport, isMainMarket } from "./universe.ts";
 import { earlyMover } from "./edge.ts";
 import { DEFAULT_SAFEST_FLOOR } from "../desk-settings.ts";
+import { isLiveDeskPick, liveQualityCap } from "./call-gate.ts";
+import { combineParlayFair } from "./joint-grade.ts";
 import type {
   DeskSnapshot,
   EventBrief,
@@ -512,9 +514,16 @@ export function shownParlayFromStoreLegs(
 ): number {
   if (legs.length < 2) return Number.isFinite(legs[0]?.fairProb) ? (legs[0]!.fairProb as number) : 0.5;
   const sameGame = new Set(legs.map((l) => l.eventId)).size < legs.length;
-  const mlAndSpread = sameGame && legs.some((l) => l.marketType === "ml") && legs.some((l) => l.marketType === "spread");
-  const raw = product(legs.map((l) => (Number.isFinite(l.fairProb) ? (l.fairProb as number) : 0.5)));
-  const combinedFair = Math.min(0.97, raw * (sameGame ? sgpHaircut(legs.length, mlAndSpread) : 1));
+  // Normalize legs to ScanRow-compatible shape for combineParlayFair
+  const normLegs = legs.map((l) => ({
+    eventId: l.eventId,
+    marketType: (l.marketType as string) || "ml",
+    side: l.side,
+    fairProb: Number.isFinite(l.fairProb) ? (l.fairProb as number) : 0.5,
+    sport: l.sport ?? "",
+    isProp: false,
+  }));
+  const combinedFair = Math.min(0.97, combineParlayFair(normLegs as Parameters<typeof combineParlayFair>[0]));
   const decimalPayout = product(legs.map((l) => americanToDecimal(Number.isFinite(l.price) ? (l.price as number) : -110)));
   const cand: ParlayCandidate = {
     legs: legs.map((l) => ({
@@ -741,7 +750,9 @@ function periodWhy(r: ScanRow): string {
 /** The Call must be a high-info ticket that still pays — not a noisy 0.5 inning. */
 function heroEligible(p: DeskPick): boolean {
   if (p.parlay) return false;
-  if (p.row?.inPlay) return false;
+  // Use isLiveDeskPick — checks inPlay flag, in_play tag, AND start time so
+  // a game that has kicked off but not yet flipped the feed doesn't slip through.
+  if (isLiveDeskPick(p)) return false;
   if (p.bucket === "period") return false;
   if (!(p.decimalPayout >= 1.55)) return false;
   if (p.chance < 0.5 || p.chance > 0.76) return false;
@@ -972,13 +983,10 @@ function syntheticRow(leg: {
 
 function fallbackParlay(rows: ScanRow[], reason: string): ParlayCandidate {
   const sameGame = new Set(rows.map((r) => r.eventId)).size < rows.length;
-  const mlAndSpread = sameGame && rows.some((l) => l.marketType === "ml") && rows.some((l) => l.marketType === "spread");
-  const usedSim = false;
-  const raw = product(rows.map((l) => (Number.isFinite(l.fairProb) ? l.fairProb : 0.5)));
-  const combinedFair = Math.min(0.97, raw * (sameGame ? sgpHaircut(rows.length, mlAndSpread) : 1));
+  const combinedFair = Math.min(0.97, combineParlayFair(rows));
   const decimalPayout = product(rows.map((l) => americanToDecimal(l.price)));
   const sports = [...new Set(rows.map((l) => l.sport))];
-  const corr = correlationOf(rows, usedSim);
+  const corr = correlationOf(rows, sameGame);
   const mapped: ParlayLeg[] = rows.map((l) => ({
     eventId: l.eventId,
     sport: l.sport,

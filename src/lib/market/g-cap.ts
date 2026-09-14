@@ -2,7 +2,7 @@
 import type { GameLatent } from "./sim.ts";
 
 export const SPLIT_CAP = 0.06;
-export const WIN_CAP = 0.1;
+export const WIN_CAP = 0.06;     // ±6% on pWinH — BIBLE Part 2 §1
 
 function clip(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, n));

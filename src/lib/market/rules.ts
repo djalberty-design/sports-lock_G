@@ -10,7 +10,7 @@
  * snapshot can never silently disagree.
  */
 
-export const DESK_VERSION = "2026.09.12-master-v7";
+export const DESK_VERSION = "2026.09.13-master-v9";
 
 export type RuleApplies = "all" | "game" | "prop" | "period" | "parlay";
 
@@ -135,6 +135,13 @@ export const ALGORITHM_RULES: AlgorithmRule[] = [
     title: "Rest / B2B / bye",
     text: "NBA/NHL back-to-backs hurt. NFL bye vs short week. MLB extra rest is small except bullpen B2B.",
     layerIds: ["rest"],
+  },
+  {
+    id: "officials",
+    applies: ["game", "period"],
+    title: "Officiating crew",
+    text: "Referee / umpire tendencies move pace and foul rate. High-foul crews open the total. Crew looked up from the live ESPN scoreboard.",
+    layerIds: ["officials"],
   },
   {
     id: "weather-park",

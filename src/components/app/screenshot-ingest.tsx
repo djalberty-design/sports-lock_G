@@ -11,6 +11,7 @@ import { useDeskDecision } from "@/lib/market/use-board";
 import { TicketReview, LockedStamp, buildLockPayload } from "./ticket-lock";
 import { compressScreenshot, dataUrlToBytes } from "@/lib/screenshot";
 import { cn } from "@/lib/utils";
+import { readSlipOnDevice } from "@/lib/market/slip-ocr-browser";
 
 const EMPTY: ParsedTicket = {
   sport: "NFL",
@@ -84,6 +85,20 @@ export function ScreenshotIngest({
       }
       const res = await parseTicketImage({ data: { image: b64, mime, kind } });
       if (!res.ok) {
+        // Tier 2: client-side Tesseract OCR when xAI is unavailable (BIBLE §OCR fallback)
+        setNote("Server OCR unavailable — trying on-device text read…");
+        try {
+          const deviceParsed = await readSlipOnDevice(file);
+          if (deviceParsed && deviceParsed.selection) {
+            setLegs([]);
+            setDraft({ ...deviceParsed, confirmed: false });
+            setEditFields(true);
+            setNote("On-device OCR. Check every field — fix anything it missed, then save to Log.");
+            return;
+          }
+        } catch {
+          // Tesseract unavailable — fall through to manual
+        }
         setNote(res.error);
         setEditFields(true);
         return;

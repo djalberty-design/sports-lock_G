@@ -4,7 +4,7 @@
  */
 import { DESK_VERSION } from "./rules.ts";
 
-export const DOCUMENT_VERSION = "2026.09.12-master-v7";
+export const DOCUMENT_VERSION = "2026.09.13-master-v9";
 
 export const DESK_CONSTANTS: { name: string; value: string }[] = [
   { name: "Document", value: DOCUMENT_VERSION },
@@ -64,7 +64,7 @@ export const ENGINEERING_CHECKLIST = [
   "DFS — /slate Full PPR, cash/GPP/Showdown, injury ripple, 90-min radar, late-swap, $200 shift, 18+.",
   "Mobile — pb-32, collapsible parlay pill, portaled More drawer, wrapping filters.",
   "Start / — bankroll. Do not auto-redirect.",
-  "Pin — DESK_VERSION 2026.09.12-master-v7 after the fair-blend ranking rule.",
+  "Pin — DESK_VERSION 2026.09.13-master-v9 after the fair-blend ranking rule.",
 ] as const;
 
 export const NEVER_DO = [

@@ -17,6 +17,7 @@ import type {
 import { deskScore, parlayScore, stampRows } from "./tape.ts";
 import { correlationOf, sgpHaircut, typicalParlayJuice } from "./parlays.ts";
 import { growthScore, jointFromLegs, sameGameRho } from "./copula.ts";
+import { combineParlayFair } from "./joint-grade.ts";
 import { drawPaths, latentFromScores, simCover, simOver, simWin } from "./sim.ts";
 import { leftoverOverProb } from "./live-state.ts";
 import { buildLatents } from "./latents.ts";
@@ -425,18 +426,6 @@ export function pickCoinFlip(rows: ScanRow[], excludeEventIds: string[] = []): S
 
 export type ParlayMode = "ribbon" | "catalog";
 
-function sameGameJoint(legs: ScanRow[]): number | undefined {
-  if (legs.length < 2) return undefined;
-  if (new Set(legs.map((l) => l.eventId)).size !== 1) return undefined;
-  if (legs.some((l) => l.isProp || l.marketType === "prop")) return undefined;
-  if (!legs.every((l) => l.marketType === "ml" || l.marketType === "spread" || l.marketType === "total")) {
-    return undefined;
-  }
-  
-  const rho = sameGameRho(legs);
-  return jointFromLegs(legs.map((l) => l.fairProb), rho);
-}
-
 function parlayLegal(legs: ScanRow[], mode: ParlayMode = "ribbon"): { ok: true } | { ok: false; reason: string } {
   if (legs.some((l) => l.inPlay || l.tag === "in_play")) {
     return { ok: false, reason: "Before the game only. No in-progress legs." };
@@ -505,16 +494,9 @@ export function evaluateParlay(
   const games = new Set(legs.map((l) => l.eventId));
   const sameGame = games.size < legs.length;
   const mlAndSpread = sameGame && legs.some((l) => l.marketType === "ml") && legs.some((l) => l.marketType === "spread");
-  const joint = sameGameJoint(legs);
-  const usedSim = joint != null;
-  const rho = sameGame ? sameGameRho(legs) : 0;
-  const hair = usedSim ? 1 : sameGame ? sgpHaircut(legs.length, mlAndSpread) : 1;
-  const rawFair = usedSim
-    ? joint
-    : sameGame
-      ? jointFromLegs(legs.map((l) => l.fairProb), rho)
-      : product(legs.map((l) => l.fairProb));
-  const combinedFair = Math.min(0.97, usedSim || sameGame ? rawFair : rawFair * hair);
+  // combineParlayFair is the canonical parlay pricer — handles SGP joint paths,
+  // cross-game independence, and fallback haircut in one place (BIBLE §sgp rule).
+  const combinedFair = Math.min(0.97, combineParlayFair(legs));
   const juice = typicalParlayJuice(legs.length);
   const ev =
     combinedEv ??
@@ -537,7 +519,7 @@ export function evaluateParlay(
   }));
   const decimalPayout = product(legs.map((l) => americanToDecimal(l.price)));
   const sports = [...new Set(legs.map((l) => l.sport))];
-  const corr = correlationOf(legs, usedSim);
+  const corr = correlationOf(legs, sameGame);
   const shownPct = formatChancePct(shownCombinedChance(combinedFair, decimalPayout, legs.length, sameGame)) ?? `${Math.round(combinedFair * 100)}%`;
   const cand: ParlayCandidate = {
     legs: mapped,

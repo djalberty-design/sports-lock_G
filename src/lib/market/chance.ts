@@ -17,6 +17,11 @@ import { defenseAllowed, processFromLooks, underlyingOffense, underlyingPitch, t
 import { lookupVenue, weatherAtVenue } from "./venues.ts";
 import { restEffect } from "./rest.ts";
 import { type PlayerVolumeBaseline } from "./feed-adapter.ts";
+import { availabilityEffect } from "./availability.ts";
+import { officialLayer, type OfficialPosting } from "./officials.ts";
+import { openMoveNote, openPrecision, tapeLayers, thinClose } from "./market-opponent.ts";
+import { splitLayers } from "./splits-g.ts";
+import { matchupLayers } from "./matchup-g.ts";
 
 export type FormGame = {
   date?: string;
@@ -84,6 +89,7 @@ export type ChanceInput = {
   homePitcherHand?: "L" | "R";
   awayPitcherHand?: "L" | "R";
   layerHaircuts?: Record<string, number>;
+  officials?: OfficialPosting[];
 };
 
 export type ChanceReport = {
@@ -366,28 +372,27 @@ export function buildChance(input: ChanceInput): ChanceReport | null {
   const layers: ChanceLayer[] = [];
   const sport = input.sport || "NFL";
 
-  if (input.oddsHome != null && Number.isFinite(input.oddsHome)) {
+  if (input.oddsHome != null && Number.isFinite(input.oddsHome) && !thinClose(input.oddsHome)) {
     pushLayer(layers, {
       id: "market",
       label: "Sportsbook no-vig (close)",
       home: input.oddsHome,
       precision: marketPrecision(hoursToStart(input.start)),
       family: "market",
-      note: "Two-way price with the house cut stripped. Real money, delayed.",
+      note: "Two-way price with the house cut stripped. Real money, delayed. The close is the opponent.",
     });
   } else {
-    pushEmpty(layers, "market", "Sportsbook no-vig (close)", "Looked up the live two-way close. Empty look.");
+    pushEmpty(layers, "market", "Sportsbook no-vig (close)", "Looked up the live two-way close. Empty or too thin to be a close.");
   }
 
   if (input.openHome != null && Number.isFinite(input.openHome) && (input.oddsHome == null || Math.abs(input.openHome - input.oddsHome) > 0.012)) {
-    const moved = input.oddsHome != null ? input.oddsHome - input.openHome : 0;
     pushLayer(layers, {
       id: "open",
       label: "Opening line",
       home: input.openHome,
-      precision: 5.5,
+      precision: openPrecision(input.oddsHome != null),
       family: "market",
-      note: moved > 0.008 ? `Close moved toward ${input.home}.` : `Close moved away from ${input.home}.`,
+      note: openMoveNote(input.openHome, input.oddsHome, input.home),
     });
   }
 
@@ -400,6 +405,19 @@ export function buildChance(input: ChanceInput): ChanceReport | null {
       family: "market",
       note: "A second sportsbook print from ESPN's pick center.",
     });
+  }
+
+  // Tape: tickets % vs handle % — sharp tell when they split (BIBLE §tape rule)
+  for (const layer of tapeLayers({
+    home: input.home,
+    oddsHome: input.oddsHome,
+    openHome: input.openHome,
+    ticketHome: input.ticketHome,
+    handleHome: input.handleHome,
+    steam: input.steam,
+  })) {
+    if (layer.empty) pushEmpty(layers, layer.id, layer.label, layer.note);
+    else pushLayer(layers, layer);
   }
 
   if (input.homeSpread != null && Number.isFinite(input.homeSpread) && Math.abs(input.homeSpread) > 0.05) {
@@ -597,6 +615,61 @@ export function buildChance(input: ChanceInput): ChanceReport | null {
     empty: process.empty,
   });
 
+  // Availability layer — injury outs / questionable count (BIBLE §1 context stack)
+  {
+    const avail = availabilityEffect({
+      sport,
+      homeOuts: input.homeOuts,
+      awayOuts: input.awayOuts,
+      homeQuestionable: input.homeQuestionable,
+      awayQuestionable: input.awayQuestionable,
+    });
+    pushLayer(layers, {
+      id: "availability",
+      label: "Availability",
+      home: avail.layerHome,
+      precision: avail.empty ? 0 : avail.precision,
+      family: "context",
+      note: avail.note,
+      thin: avail.empty,
+      empty: avail.empty,
+    });
+  }
+
+  // Officials / crew tendency layer (BIBLE §1 context stack)
+  {
+    const layer = officialLayer({ sport, officials: input.officials });
+    if (layer.empty) pushEmpty(layers, layer.id, layer.label, layer.note);
+    else pushLayer(layers, { ...layer, family: "context" });
+  }
+
+  // H2H + venue-split layers from splits-g (BIBLE §h2h + venue-split rules)
+  for (const layer of splitLayers({
+    sport,
+    home: input.home,
+    away: input.away,
+    lastFive: input.lastFive,
+    homeLooks: input.homeLooks,
+    awayLooks: input.awayLooks,
+  })) {
+    if (layer.empty) pushEmpty(layers, layer.id, layer.label, layer.note);
+    else pushLayer(layers, { ...layer, family: "context" });
+  }
+
+  // Defense / underlying / platoon / pitcher layers from matchup-g (BIBLE §defense + platoon rules)
+  for (const layer of matchupLayers({
+    sport,
+    homeLooks: input.homeLooks,
+    awayLooks: input.awayLooks,
+    homeEra: input.homeEra,
+    awayEra: input.awayEra,
+    homePitcherHand: input.homePitcherHand,
+    awayPitcherHand: input.awayPitcherHand,
+  })) {
+    if (layer.empty) pushEmpty(layers, layer.id, layer.label, layer.note);
+    else pushLayer(layers, { ...layer, family: "model" });
+  }
+
   if (!layers.length) return null;
 
   const pooled = poolLayers(layers, input.oddsHome ?? input.bookHome, input.layerHaircuts);
@@ -710,10 +783,11 @@ export function priceDiscretePlayerProp(
   line: number,
   baseline: PlayerVolumeBaseline,
   teamExpectedPace: number
-): { overProb: number; underProb: number } {
+): { overProb: number; underProb: number } | null {
   const mu = calculatePlayerPropMean(propType, baseline, teamExpectedPace);
   
-  if (mu === 0) return { overProb: 0.5, underProb: 0.5 }; // Empty Look fallback
+  // Empty Look — no baseline data. Return null; never inject 50/50 drag. (BIBLE §0.1)
+  if (mu === 0) return null;
   
   const probOver = poissonOver(mu, line);
   return {
@@ -730,10 +804,11 @@ export function priceContinuousPlayerProp(
   line: number,
   baseline: PlayerVolumeBaseline,
   teamExpectedPace: number
-): { overProb: number; underProb: number } {
+): { overProb: number; underProb: number } | null {
   const mu = calculatePlayerPropMean(propType, baseline, teamExpectedPace);
   
-  if (mu === 0) return { overProb: 0.5, underProb: 0.5 };
+  // Empty Look — no baseline data. Return null; never inject 50/50 drag. (BIBLE §0.1)
+  if (mu === 0) return null;
   
   // Standard deviation scales sub-linearly with expected volume
   const sigma = Math.max(4, Math.sqrt(mu) * 3.5); 
