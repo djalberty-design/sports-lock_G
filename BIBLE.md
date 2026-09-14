@@ -12,7 +12,7 @@
 
 **Owner:** DJ Alberty · super admin djalberty@gmail.com
 
-**Live site:** https://sportslock.vercel.app
+**Live site:** https://sportslock.app
 
 **Source:** https://github.com/djalberty-design/sports-lock_G (main)
 
