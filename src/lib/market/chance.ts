@@ -232,30 +232,63 @@ export function totalSigma(sport: string): number {
   }
 }
 
-const KEY_MARGIN_MASS: { k: number; mass: number }[] = [
-  { k: 3, mass: 0.151 },
-  { k: 7, mass: 0.092 },
-  { k: 6, mass: 0.066 },
-  { k: 10, mass: 0.058 },
-  { k: 14, mass: 0.048 },
-  { k: 4, mass: 0.046 },
-];
+function normalPdf(x: number, mean: number, std: number): number {
+  const z = (x - mean) / std;
+  return Math.exp(-0.5 * z * z) / (std * Math.sqrt(2 * Math.PI));
+}
+
+function getBaseMass(m: number): number {
+  const absM = Math.abs(m);
+  if (absM === 0) return 0.002; // Very few ties
+  const masses: Record<number, number> = {
+    1: 0.025, 2: 0.020, 3: 0.150, 4: 0.045, 5: 0.015,
+    6: 0.045, 7: 0.095, 8: 0.020, 9: 0.010, 10: 0.055,
+    11: 0.020, 12: 0.005, 13: 0.010, 14: 0.050, 15: 0.010,
+    16: 0.010, 17: 0.020, 18: 0.005, 19: 0.005, 20: 0.005,
+    21: 0.020, 24: 0.015, 28: 0.010, 31: 0.005, 35: 0.005
+  };
+  return masses[absM] ?? 0.005;
+}
+
+export function footballCoverProb(spread: number | undefined | null, projectedMargin: number | undefined | null, sport: string): { p: number; empty: boolean } {
+  if (spread == null || Number.isNaN(spread) || projectedMargin == null || Number.isNaN(projectedMargin)) {
+    return { p: 0.50, empty: true };
+  }
+  
+  if (sport !== "NFL" && sport !== "NCAAF") {
+    return { p: 0.50, empty: true };
+  }
+
+  const std = sport === "NFL" ? 10.2 : 13.5;
+  let totalWeight = 0;
+  let coverWeight = 0;
+
+  for (let m = -60; m <= 60; m++) {
+    const baseFreq = getBaseMass(m);
+    const projDensity = normalPdf(m, projectedMargin, std);
+    const weight = baseFreq * projDensity;
+    
+    totalWeight += weight;
+    
+    if (m + spread > 0) {
+      coverWeight += weight;
+    } else if (m + spread === 0) {
+      coverWeight += weight * 0.5;
+    }
+  }
+
+  if (totalWeight === 0) return { p: 0.50, empty: true };
+  
+  const p = Math.min(0.99, Math.max(0.01, coverWeight / totalWeight));
+  return { p, empty: false };
+}
 
 export function homeCoverProb(expectedHomeMargin: number, homeLine: number, sport: string): number {
-  const z = (expectedHomeMargin + homeLine) / marginSigma(sport);
-  const cont = invLogit(logit(normalCdf(z)), 0.03, 0.97);
-  if (sport !== "NFL" && sport !== "NCAAF") return cont;
-  
-  let massCover = 0;
-  let massTot = 0;
-  for (const row of KEY_MARGIN_MASS) {
-    massTot += row.mass;
-    const homeWinsBy = expectedHomeMargin >= 0 ? row.k : -row.k;
-    if (homeWinsBy + homeLine > 0) massCover += row.mass;
-    else if (homeWinsBy + homeLine === 0) massCover += row.mass * 0.5; 
+  if (sport === "NFL" || sport === "NCAAF") {
+    return footballCoverProb(homeLine, expectedHomeMargin, sport).p;
   }
-  const disc = massTot > 0 ? massCover / massTot : cont;
-  return invLogit(logit(0.55 * cont + 0.45 * disc), 0.03, 0.97);
+  const z = (expectedHomeMargin + homeLine) / marginSigma(sport);
+  return invLogit(logit(normalCdf(z)), 0.01, 0.99);
 }
 
 export function overProb(mean: number, line: number, sport: string): number {

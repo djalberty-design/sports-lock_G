@@ -1,4 +1,4 @@
-import { leagueTotal, marginSigma, totalSigma } from "./chance.ts";
+import { leagueTotal, marginSigma, totalSigma, footballCoverProb } from "./chance.ts";
 import { DESK_VERSION } from "./rules.ts";
 
 export type GameLatent = {
@@ -43,6 +43,10 @@ export function simWin(paths: GameLatent[]): SimPrice {
 export function simCover(paths: GameLatent[], homeLine: number): SimPrice {
   if (!paths.length) return { p: 0.5, n: 0, se: 0, ran: false };
   const g = paths[0];
+  if (g.sport === "NFL" || g.sport === "NCAAF") {
+    const discrete = footballCoverProb(homeLine, g.muH - g.muA, g.sport);
+    return { p: discrete.p, n: 1, se: 0, ran: !discrete.empty };
+  }
   const z = (g.muH - g.muA + homeLine) / g.sigM;
   return { p: normalCdf(z), n: 1, se: 0, ran: true };
 }
