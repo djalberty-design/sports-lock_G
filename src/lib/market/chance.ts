@@ -112,6 +112,10 @@ export type ChanceInput = {
   seriesAwayWins?: number;
   homeRestDays?: number;
   awayRestDays?: number;
+  homeThreePointRate?: number;
+  awayThreePointRate?: number;
+  homeOppThreePtAllowed?: number;
+  awayOppThreePtAllowed?: number;
   ticketHome?: number;
   handleHome?: number;
   steam?: boolean;
