@@ -61,7 +61,23 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
   const enrichedOfficials = enrichOfficialsWithTendencies(input.officials ?? [], input.sport);
   const officialMeans = applyOfficialsToMeans({ sport: input.sport, officials: enrichedOfficials }, 1, 1);
   
-  chaos = Math.min(0.28, chaos + avail.chaosAdd + officialMeans.chaosAdd);
+  const matchupMeans = applyMatchupToMeans(
+    {
+      sport: input.sport,
+      homeLooks: input.homeLooks,
+      awayLooks: input.awayLooks,
+      homeEra: input.homeEra,
+      awayEra: input.awayEra,
+      homeWhip: input.homeWhip,
+      awayWhip: input.awayWhip,
+      homePitcherHand: input.homePitcherHand,
+      awayPitcherHand: input.awayPitcherHand,
+    },
+    1,
+    1,
+  );
+
+  chaos = Math.min(0.28, chaos + avail.chaosAdd + officialMeans.chaosAdd + matchupMeans.chaosAdd);
   const latent = latentFromScores({
     eventId: input.eventId,
     sport: input.sport,
@@ -92,19 +108,6 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
   );
   const splitMeans = applySplitsToMeans(
     { sport: input.sport, home: input.home, away: input.away, lastFive: input.lastFive, homeLooks: input.homeLooks, awayLooks: input.awayLooks },
-    1,
-    1,
-  );
-  const matchupMeans = applyMatchupToMeans(
-    {
-      sport: input.sport,
-      homeLooks: input.homeLooks,
-      awayLooks: input.awayLooks,
-      homeEra: input.homeEra,
-      awayEra: input.awayEra,
-      homePitcherHand: input.homePitcherHand,
-      awayPitcherHand: input.awayPitcherHand,
-    },
     1,
     1,
   );

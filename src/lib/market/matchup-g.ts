@@ -7,6 +7,8 @@ export type MatchupSnap = {
   awayLooks?: TeamLooks;
   homeEra?: number;
   awayEra?: number;
+  homeWhip?: number;
+  awayWhip?: number;
   homePitcherHand?: "L" | "R";
   awayPitcherHand?: "L" | "R";
 };
@@ -23,6 +25,7 @@ export type MatchupLayer = {
 export type MatchupMeans = {
   muH: number;
   muA: number;
+  chaosAdd: number;
   empty: boolean;
   note?: string;
   layers: MatchupLayer[];
@@ -41,11 +44,6 @@ function leagueAllow(sport: string): number {
   if (sport === "NFL" || sport === "NCAAF") return 22.5;
   if (sport === "NHL") return 3.05;
   return 4.5;
-}
-
-function defMul(sport: string, allowed: number): number {
-  if (sport === "MLB") return clip(allowed, 0.86, 1.16);
-  return clip(allowed / leagueAllow(sport), 0.88, 1.14);
 }
 
 export function matchupLayers(snap: MatchupSnap): MatchupLayer[] {
@@ -148,34 +146,88 @@ export function matchupLayers(snap: MatchupSnap): MatchupLayer[] {
 }
 
 export function applyMatchupToMeans(snap: MatchupSnap, muH: number, muA: number): MatchupMeans {
-  const layers = matchupLayers(snap);
-  const live = layers.filter((l) => !l.empty);
+  const {
+    sport,
+    homeEra,
+    awayEra,
+    homeWhip,
+    awayWhip,
+    homePitcherHand,
+    awayPitcherHand,
+    homeLooks,
+    awayLooks,
+  } = snap;
+
+  // The Empty Look Law (Strict Guardrail)
+  if (
+    sport !== "MLB" ||
+    homeEra == null ||
+    awayEra == null ||
+    homePitcherHand == null ||
+    awayPitcherHand == null ||
+    homeWhip == null ||
+    awayWhip == null
+  ) {
+    return { muH: 1, muA: 1, chaosAdd: 0, empty: true, note: "", layers: matchupLayers(snap) };
+  }
+
   let nextH = muH;
   let nextA = muA;
-  const sport = snap.sport;
-  const hDef = defenseAllowed(snap.homeLooks, sport);
-  const aDef = defenseAllowed(snap.awayLooks, sport);
-  if (hDef != null && aDef != null) {
-    nextH *= defMul(sport, aDef);
-    nextA *= defMul(sport, hDef);
+  let chaosAdd = 0;
+
+  // 1. Pitcher Volatility (ERA/WHIP)
+  const mlbAvgEra = 4.10;
+  
+  // Output a fractional multiplier to alter the opposing team's scoring mean
+  const homePitcherMul = clip(homeEra / mlbAvgEra, 0.8, 1.25);
+  const awayPitcherMul = clip(awayEra / mlbAvgEra, 0.8, 1.25);
+  
+  // Home pitcher affects Away team's scoring
+  nextA *= homePitcherMul;
+  // Away pitcher affects Home team's scoring
+  nextH *= awayPitcherMul;
+
+  // Pitcher Isolation Metric (ERA / WHIP) to estimate runs per baserunner (home run dependency)
+  const homePitcherIso = homeEra / homeWhip;
+  const awayPitcherIso = awayEra / awayWhip;
+  const avgIso = 4.10 / 1.30; // ~3.15
+
+  // 2. Platoon Advantage
+  const homeVs = awayPitcherHand === "L" ? homeLooks?.vsLeft : homeLooks?.vsRight;
+  const awayVs = homePitcherHand === "L" ? awayLooks?.vsLeft : awayLooks?.vsRight;
+
+  const avgOps = 0.720;
+  if (homeVs?.ops != null) {
+    const platoonMulH = clip(1 + (homeVs.ops - avgOps) * 0.8, 0.85, 1.15);
+    nextH *= platoonMulH;
   }
-  const hEra = snap.homeEra ?? snap.homeLooks?.last7?.era ?? snap.homeLooks?.season.era;
-  const aEra = snap.awayEra ?? snap.awayLooks?.last7?.era ?? snap.awayLooks?.season.era;
-  if (hEra != null && aEra != null) {
-    nextA *= clip(hEra / 4.2, 0.9, 1.12);
-    nextH *= clip(aEra / 4.2, 0.9, 1.12);
+  if (awayVs?.ops != null) {
+    const platoonMulA = clip(1 + (awayVs.ops - avgOps) * 0.8, 0.85, 1.15);
+    nextA *= platoonMulA;
   }
-  const lean = live.length
-    ? live.reduce((s, l) => s + (l.home - 0.5) * Math.min(1, l.precision / 2), 0) / live.length
-    : 0;
-  const tilt = clip(lean * 0.22, -0.05, 0.05);
-  nextH *= 1 + tilt;
-  nextA *= 1 - tilt;
+
+  // 3. Variance Injection (chaosAdd)
+  // If the matchup metrics dictate heavy volatility (e.g. high pitcher ISO or high lineup ISO/K9), add a positive modifier
+  let hChaos = 0;
+  let aChaos = 0;
+
+  if (homePitcherIso > avgIso * 1.1) hChaos += 0.015; // Home pitcher is volatile (HR dependent)
+  if (awayPitcherIso > avgIso * 1.1) aChaos += 0.015;
+
+  // High-strikeout/high-power lineup vs pitcher creates binary outcomes
+  if (homeVs?.iso != null && homeVs.iso > 0.170) hChaos += 0.015;
+  if (awayVs?.iso != null && awayVs.iso > 0.170) aChaos += 0.015;
+  if (homeVs?.k9 != null && homeVs.k9 > 9.5) hChaos += 0.01;
+  if (awayVs?.k9 != null && awayVs.k9 > 9.5) aChaos += 0.01;
+
+  chaosAdd = clip(hChaos + aChaos, 0, 0.05);
+
   return {
     muH: nextH,
     muA: nextA,
-    empty: live.length === 0,
-    layers,
-    note: live.length ? live.map((l) => l.note).join(" ") : undefined,
+    chaosAdd,
+    empty: false,
+    note: `Platoon & Volatility applied. Home starter ERA ${homeEra.toFixed(2)}, Away starter ERA ${awayEra.toFixed(2)}.`,
+    layers: matchupLayers(snap),
   };
 }

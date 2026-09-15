@@ -39,7 +39,7 @@ test("Phillies/Braves posted looks fire defense, underlying, platoon, pitcher", 
     assert.equal(layers.find((l) => l.id === id)?.empty, false, id);
   }
   const m = applyMatchupToMeans(
-    { sport: "MLB", homeLooks, awayLooks, homePitcherHand: "L", awayPitcherHand: "R", homeEra: 3.2, awayEra: 4.1 },
+    { sport: "MLB", homeLooks, awayLooks, homePitcherHand: "L", awayPitcherHand: "R", homeEra: 3.2, awayEra: 4.1, homeWhip: 1.1, awayWhip: 1.3 },
     4.4,
     4.4,
   );
