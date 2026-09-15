@@ -3,7 +3,7 @@
  */
 import { americanToImplied, americanToDecimal, product, twoWayNoVig, valueScore } from "./engine.ts";
 import { isTodayEt } from "../utils.ts";
-import { buildChance, parseEra, parseWhip, type type type FormGame } from "./chance.ts";
+import { buildChance, parseEra, parseWhip, type FormGame } from "./chance.ts";
 import { buildPropChance, parsePropSelection, propContextFromBrief, teamWinForPlayer, type PropReport } from "./props.ts";
 import { analyzeScores, ewmaMean, formatScoreLine, mergeForm, parseEspnScore, type FormTape, type ScoreGame } from "./form.ts";
 import { fetchTeamLooks, type TeamLooks } from "./looks.ts";
