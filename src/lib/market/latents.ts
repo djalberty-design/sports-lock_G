@@ -117,7 +117,7 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
   );
   latent.muH *= venueMeans.muH * restMeans.muH * avail.muH * processMeans.muH * recencyMeans.muH * splitMeans.muH * matchupMeans.muH * officialMeans.muH;
   latent.muA *= venueMeans.muA * restMeans.muA * avail.muA * processMeans.muA * recencyMeans.muA * splitMeans.muA * matchupMeans.muA * officialMeans.muA;
-  const note = [venueMeans.note, restMeans.note, avail.note, processMeans.empty ? undefined : processMeans.note, recencyMeans.empty ? undefined : recencyMeans.note, splitMeans.empty ? undefined : splitMeans.note, matchupMeans.empty ? undefined : matchupMeans.note, officialMeans.empty ? undefined : officialMeans.note].filter(Boolean).join(" ");
+  const note = [venueMeans.note, restMeans.note, avail.note, processMeans.empty ? undefined : processMeans.note, recencyMeans.empty ? undefined : recencyMeans.note, splitMeans.empty ? undefined : splitMeans.note, matchupMeans.empty ? undefined : matchupMeans.note, officialMeans.empty ? undefined : officialMeans.note, typeof hoopsMeans !== "undefined" && !hoopsMeans.empty ? hoopsMeans.note : undefined].filter(Boolean).join(" ");
   if (note) latent.note = note;
   const capped = capLatentToClose(latent);
   const next = applyLiveRemaining(capped, {
@@ -129,3 +129,34 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
   });
   return { latent: next, poolHome: report?.home, layers: report };
 }
+
+function applyHoopsToMeans(input: ChanceInput): { muH: number; muA: number; chaosAdd: number; empty: boolean; note?: string } {
+  if (input.sport !== "NBA" && input.sport !== "NCAAB") {
+    return { muH: 1, muA: 1, chaosAdd: 0, empty: true };
+  }
+
+  const { homePace, awayPace, homeOffensiveRating, awayOffensiveRating } = input;
+
+  if (
+    homePace == null || Number.isNaN(homePace) ||
+    awayPace == null || Number.isNaN(awayPace) ||
+    homeOffensiveRating == null || Number.isNaN(homeOffensiveRating) ||
+    awayOffensiveRating == null || Number.isNaN(awayOffensiveRating)
+  ) {
+    return { muH: 1, muA: 1, chaosAdd: 0, empty: true };
+  }
+
+  const projectedPace = (homePace + awayPace) / 2;
+  const muH = (projectedPace / 100) * homeOffensiveRating;
+  const muA = (projectedPace / 100) * awayOffensiveRating;
+
+  return {
+    muH,
+    muA,
+    chaosAdd: 0,
+    empty: false,
+    note: "Pace/Eff decoupled (${projectedPace.toFixed(1)} pace)."
+  };
+}
+
+

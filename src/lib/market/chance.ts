@@ -68,6 +68,10 @@ export type ChanceInput = {
   awayBullpenXfip?: number;
   homeBullpenRest?: number;
   awayBullpenRest?: number;
+  homePace?: number;
+  awayPace?: number;
+  homeOffensiveRating?: number;
+  awayOffensiveRating?: number;
   lastFive?: FormBlock[];
   homeOuts?: number;
   awayOuts?: number;
