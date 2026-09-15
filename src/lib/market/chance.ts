@@ -99,6 +99,8 @@ export type ChanceInput = {
   barometricPressure?: number;
   parkRunFactor?: number;
   parkHrFactor?: number;
+  homeTalentRating?: number;
+  awayTalentRating?: number;
   venue?: string;
   seriesHomeWins?: number;
   seriesAwayWins?: number;
