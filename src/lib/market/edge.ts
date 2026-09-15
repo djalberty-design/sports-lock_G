@@ -1,3 +1,4 @@
+import { americanToImplied } from "./engine.ts";
 /** Sportsbook fee, timing radar, early-mover. Ranking callers pass hold/tape — this file only labels. */
 
 export function calculateBookFee(odds1: number, odds2: number): { holdPct: number; verdict: string } {
@@ -52,10 +53,7 @@ export function earlyMover(desk: number | undefined, predict: number | undefined
   return Math.abs(predict - desk) > 0.05;
 }
 
-export function impliedFromAmerican(odds: number): number {
-  if (!Number.isFinite(odds)) return NaN;
-  return odds < 0 ? Math.abs(odds) / (Math.abs(odds) + 100) : 100 / (odds + 100);
-}
+
 
 function fmtAmerican(n: number): string {
   const r = Math.round(n);
@@ -66,8 +64,8 @@ function fmtAmerican(n: number): string {
 export function lineShiftAlert(boardPrice: number, livePrice: number, chance?: number): string | null {
   if (!Number.isFinite(boardPrice) || !Number.isFinite(livePrice)) return null;
   if (Math.round(boardPrice) === Math.round(livePrice)) return null;
-  const oldImp = impliedFromAmerican(boardPrice);
-  const newImp = impliedFromAmerican(livePrice);
+  const oldImp = americanToImplied(boardPrice);
+  const newImp = americanToImplied(livePrice);
   const oldEdge = chance != null && Number.isFinite(chance) ? (chance - oldImp) * 100 : null;
   const newEdge = chance != null && Number.isFinite(chance) ? (chance - newImp) * 100 : null;
   let verdict = "";
@@ -80,4 +78,5 @@ export function lineShiftAlert(boardPrice: number, livePrice: number, chance?: n
       : "";
   return `Line Shift Detected: Hard Rock is now offering ${fmtAmerican(livePrice)} instead of ${fmtAmerican(boardPrice)}.${edgeBit}`;
 }
+
 

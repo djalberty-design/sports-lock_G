@@ -1,3 +1,4 @@
+import { invLogit } from "./math.ts";
 /** Rest / travel / body clock on G. NBA-NHL B2B, NFL short week vs bye, MLB bullpen B2B. */
 export type RestSnap = {
   sport: string;
@@ -17,10 +18,7 @@ export type RestEffect = {
   note: string;
 };
 
-function invLogit(z: number): number {
-  const x = 1 / (1 + Math.exp(-z));
-  return Math.min(0.97, Math.max(0.03, x));
-}
+
 
 export function kickHourEt(start?: string): number | undefined {
   if (!start) return undefined;
@@ -125,7 +123,7 @@ export function restEffect(input: RestSnap): RestEffect {
     totalMul,
     homeMeanMul,
     awayMeanMul,
-    layerHome: invLogit(z),
+    layerHome: invLogit(z, 0.03, 0.97),
     precision: notes.length ? 2.1 : 0.8,
     empty: notes.length === 0 && Math.abs(z) < 1e-9,
     note: notes.join(" ") || `Rest home ${h.toFixed(1)}d / away ${a.toFixed(1)}d.`,
@@ -145,3 +143,4 @@ export function applyRestToMeans(
     note: r.empty ? undefined : r.note,
   };
 }
+

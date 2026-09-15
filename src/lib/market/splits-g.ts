@@ -1,3 +1,4 @@
+import { clip, invLogit } from "./math.ts";
 /** H2H and home/road on G. Season log first, then posted looks. Missing both = empty. */
 import { splitByVenue, vsOpponent, type ScoreGame } from "./form.ts";
 import type { FormBlock } from "./chance.ts";
@@ -29,13 +30,9 @@ export type SplitMeans = {
   layers: SplitLayer[];
 };
 
-function clip(n: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, n));
-}
 
-function invLogit(z: number): number {
-  return clip(1 / (1 + Math.exp(-z)), 0.08, 0.92);
-}
+
+
 
 function blockFor(tape: FormBlock[] | undefined, team: string): FormBlock | undefined {
   if (!tape?.length) return undefined;
@@ -56,10 +53,10 @@ function leanFromBags(h?: SplitBag, a?: SplitBag): number | null {
   if (h.wp != null && a.wp != null && Number.isFinite(h.wp) && Number.isFinite(a.wp)) {
     const hw = clip(h.wp, 0.08, 0.92);
     const aw = clip(a.wp, 0.08, 0.92);
-    return invLogit(Math.log(hw / (1 - hw)) - Math.log(aw / (1 - aw)));
+    return invLogit(Math.log(hw / (1 - hw)) - Math.log(aw / (1 - aw)), 0.08, 0.92);
   }
-  if (h.ops != null && a.ops != null) return invLogit((h.ops - a.ops) * 2.4);
-  if (h.ptsG != null && a.ptsG != null) return invLogit(((h.ptsG - a.ptsG) / 12) * 0.9);
+  if (h.ops != null && a.ops != null) return invLogit((h.ops - a.ops) * 2.4, 0.08, 0.92);
+  if (h.ptsG != null && a.ptsG != null) return invLogit(((h.ptsG - a.ptsG) / 12) * 0.9, 0.08, 0.92);
   return null;
 }
 
@@ -71,7 +68,7 @@ export function splitLayers(snap: SplitSnap): SplitLayer[] {
   const layers: SplitLayer[] = [];
 
   if (h2hHome && h2hAway && h2hHome.n + h2hAway.n >= 2) {
-    const p = invLogit((h2hHome.wp - h2hAway.wp) * 1.6 + (h2hHome.avgMargin - h2hAway.avgMargin) / 18);
+    const p = invLogit((h2hHome.wp - h2hAway.wp) * 1.6 + (h2hHome.avgMargin - h2hAway.avgMargin) / 18, 0.08, 0.92);
     layers.push({
       id: "h2h",
       label: "Head-to-head",
@@ -106,7 +103,7 @@ export function splitLayers(snap: SplitSnap): SplitLayer[] {
   const homeVenue = splitByVenue(gamesOf(hb), seasonOf(hb)).home;
   const awayVenue = splitByVenue(gamesOf(ab), seasonOf(ab)).away;
   if (homeVenue && awayVenue) {
-    const p = invLogit((homeVenue.wp - awayVenue.wp) * 1.4 + (homeVenue.avgMargin - awayVenue.avgMargin) / 20);
+    const p = invLogit((homeVenue.wp - awayVenue.wp) * 1.4 + (homeVenue.avgMargin - awayVenue.avgMargin) / 20, 0.08, 0.92);
     layers.push({
       id: "venue-split",
       label: "Home / road split",
@@ -156,3 +153,4 @@ export function applySplitsToMeans(snap: SplitSnap, muH: number, muA: number): S
     note: live.map((l) => l.note).join(" "),
   };
 }
+

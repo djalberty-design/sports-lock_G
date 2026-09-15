@@ -1,3 +1,4 @@
+import { clip } from "./math.ts";
 import type { ChanceInput } from "./chance.ts";
 
 export type MlbParkMeans = {
@@ -8,9 +9,7 @@ export type MlbParkMeans = {
   note?: string;
 };
 
-function clip(n: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, n));
-}
+
 
 export function applyMlbParkToMeans(input: ChanceInput): MlbParkMeans {
   const {
@@ -70,3 +69,4 @@ export function applyMlbParkToMeans(input: ChanceInput): MlbParkMeans {
     note: `MLB Park: f=${parkRunFactor.toFixed(2)} c=${carryFactor.toFixed(3)}`,
   };
 }
+

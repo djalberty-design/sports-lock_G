@@ -1,3 +1,4 @@
+import { clip } from "./math.ts";
 /** Officials on G. Crew names from ESPN. Tendencies only when posted. A name with no file is empty. */
 export type OfficialPosting = {
   name: string;
@@ -32,9 +33,7 @@ export type OfficialMeans = {
   layer: OfficialLayer;
 };
 
-function clip(n: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, n));
-}
+
 
 function displayName(o: OfficialPosting): string {
   return [o.name, o.role].filter(Boolean).join(" · ");
@@ -166,3 +165,4 @@ export function applyOfficialsToMeans(snap: OfficialSnap, muH: number, muA: numb
     layer,
   };
 }
+

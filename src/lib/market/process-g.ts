@@ -1,3 +1,4 @@
+import { clip } from "./math.ts";
 /** Process / efficiency on G. EPA, xwOBA, KenPom, xG move means when posted. Missing files stay empty. */
 import { leagueTotal } from "./chance.ts";
 import { processFromLooks, type TeamLooks } from "./looks.ts";
@@ -19,9 +20,7 @@ export type ProcessMeans = {
   note?: string;
 };
 
-function clip(n: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, n));
-}
+
 
 export function applyProcessToMeans(snap: ProcessSnap, muH: number, muA: number): ProcessMeans {
   const process = processFromLooks(snap.sport, snap.homeLooks, snap.awayLooks);
@@ -60,3 +59,4 @@ export function applyProcessToMeans(snap: ProcessSnap, muH: number, muA: number)
     note: process.note,
   };
 }
+

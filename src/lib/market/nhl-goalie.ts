@@ -1,3 +1,4 @@
+import { clip } from "./math.ts";
 import type { ChanceInput } from "./chance.ts";
 
 export type NhlGoalieMeans = {
@@ -8,9 +9,7 @@ export type NhlGoalieMeans = {
   note?: string;
 };
 
-function clip(n: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, n));
-}
+
 
 export function applyNhlGoalieToMeans(input: ChanceInput): NhlGoalieMeans {
   const { 
@@ -71,3 +70,4 @@ export function applyNhlGoalieToMeans(input: ChanceInput): NhlGoalieMeans {
     note: `NHL Iso: Home GSAx ${homeGoalieGsax}, Away GSAx ${awayGoalieGsax}`
   };
 }
+

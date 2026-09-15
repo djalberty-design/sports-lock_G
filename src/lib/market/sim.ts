@@ -1,3 +1,4 @@
+import { normalCdf } from "./math.ts";
 import { leagueTotal, marginSigma, totalSigma, footballCoverProb } from "./chance.ts";
 import { DESK_VERSION } from "./rules.ts";
 
@@ -20,13 +21,7 @@ export type GameLatent = {
 export type SimPrice = { p: number; n: number; se: number; ran: boolean };
 
 // Abramowitz and Stegun 7.1.26 rational approximation for Normal CDF
-function normalCdf(x: number): number {
-  const sign = x < 0 ? -1 : 1;
-  const z = Math.abs(x) / Math.SQRT2;
-  const t = 1.0 / (1.0 + 0.3275911 * z);
-  const erf = 1.0 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-z * z);
-  return 0.5 * (1.0 + sign * erf);
-}
+
 
 // Drop-in replacement: bypasses Monte Carlo by passing the latent directly
 export function drawPaths(g: GameLatent, snapshotId: string, n?: number): GameLatent[] {
@@ -103,3 +98,4 @@ export function latentFromScores(opts: {
     note: "Calculated via continuous CDF. Zero Monte Carlo drag.",
   };
 }
+

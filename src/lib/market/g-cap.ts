@@ -1,12 +1,11 @@
+import { clip } from "./math.ts";
 /** After the context stack, do not let G wander off the close. Totals stay. Split is clipped. */
 import type { GameLatent } from "./sim.ts";
 
 export const SPLIT_CAP = 0.06;
 export const WIN_CAP = 0.06;     // ±6% on pWinH — BIBLE Part 2 §1
 
-function clip(n: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, n));
-}
+
 
 export function shareFromWin(homeWin: number): number {
   return clip(0.5 + (homeWin - 0.5) * 0.28, 0.32, 0.68);
@@ -36,3 +35,4 @@ export function capLatentToClose(latent: GameLatent): GameLatent {
   }
   return next;
 }
+

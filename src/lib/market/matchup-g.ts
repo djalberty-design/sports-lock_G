@@ -1,3 +1,4 @@
+import { clip, invLogit } from "./math.ts";
 /** Defense allowed, underlying contact/pitch, platoon, starter ERA on G. Empty looks stay empty. */
 import { defenseAllowed, underlyingOffense, underlyingPitch, type TeamLooks } from "./looks.ts";
 
@@ -35,13 +36,9 @@ export type MatchupMeans = {
   layers: MatchupLayer[];
 };
 
-function clip(n: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, n));
-}
 
-function invLogit(z: number): number {
-  return clip(1 / (1 + Math.exp(-z)), 0.08, 0.92);
-}
+
+
 
 function leagueAllow(sport: string): number {
   if (sport === "NBA" || sport === "NCAAB") return 114;
@@ -60,7 +57,7 @@ export function matchupLayers(snap: MatchupSnap): MatchupLayer[] {
     layers.push({
       id: "defense",
       label: "Defense allowed",
-      home: invLogit(z),
+      home: invLogit(z, 0.08, 0.92),
       precision: 2.2,
       empty: false,
       note: "Opponent-allowed look. Home scores against the away unit.",
@@ -85,7 +82,7 @@ export function matchupLayers(snap: MatchupSnap): MatchupLayer[] {
     layers.push({
       id: "underlying",
       label: "Underlying contact / pitch",
-      home: invLogit(z),
+      home: invLogit(z, 0.08, 0.92),
       precision: 2.0,
       empty: false,
       note: "OBP/ISO or pitch quality. Not raw wins.",
@@ -109,7 +106,7 @@ export function matchupLayers(snap: MatchupSnap): MatchupLayer[] {
     layers.push({
       id: "platoon",
       label: "Platoon / handedness",
-      home: invLogit((homeVs.ops - awayVs.ops) * 2.6),
+      home: invLogit((homeVs.ops - awayVs.ops) * 2.6, 0.08, 0.92),
       precision: 1.9,
       empty: false,
       note: `Home vs ${snap.awayPitcherHand ?? "?"}HP, away vs ${snap.homePitcherHand ?? "?"}HP.`,
@@ -131,7 +128,7 @@ export function matchupLayers(snap: MatchupSnap): MatchupLayer[] {
     layers.push({
       id: "pitcher",
       label: "Starter / staff ERA",
-      home: invLogit((aEra - hEra) / 2.2),
+      home: invLogit((aEra - hEra) / 2.2, 0.08, 0.92),
       precision: 2.1,
       empty: false,
       note: `Home ERA ${hEra.toFixed(2)} vs away ${aEra.toFixed(2)}.`,
@@ -261,3 +258,4 @@ export function applyMatchupToMeans(snap: MatchupSnap, muH: number, muA: number)
     layers: matchupLayers(snap),
   };
 }
+

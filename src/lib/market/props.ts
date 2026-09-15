@@ -1,3 +1,4 @@
+import { clip } from "./math.ts";
 /**
  * Player-bet (prop) ensemble.
  *
@@ -269,9 +270,7 @@ function marketFair(price: number, oppositePrice?: number): { p: number; hold: n
   return { p, hold: Number.isFinite(implied) ? implied - p : 0.05 };
 }
 
-function clip(n: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, n));
-}
+
 
 function push(layers: PropLayer[], layer: PropLayer): void {
   if (!Number.isFinite(layer.p)) return;
@@ -859,4 +858,5 @@ export function propContextFromBrief(
     awayLooks: brief?.awayLooks,
   };
 }
+
 

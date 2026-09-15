@@ -1,3 +1,4 @@
+import { americanToImplied } from "./engine.ts";
 /**
  * Same-game P(all) from Clayton on G / fair. Cross-game stays a product.
  * Haircut only when a leg has no usable probability (G did not run).
@@ -20,12 +21,7 @@ function product(xs: number[]): number {
   return xs.reduce((a, b) => a * b, 1);
 }
 
-function americanToImplied(odds: number): number {
-  if (!Number.isFinite(odds) || odds === 0) return NaN;
-  if (odds >= 0) return 100 / (odds + 100);
-  const a = Math.abs(odds);
-  return a / (a + 100);
-}
+
 
 function legProb(l: JointLeg): number | undefined {
   if (l.simFair != null && Number.isFinite(l.simFair) && l.simFair > 0 && l.simFair < 1) return l.simFair;
@@ -129,3 +125,4 @@ function directionalSGPRouter(legs: JointLeg[], probs: number[], rho: number): n
   
   return pJoint;
 }
+

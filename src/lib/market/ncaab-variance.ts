@@ -1,3 +1,4 @@
+import { clip } from "./math.ts";
 import type { ChanceInput } from "./chance.ts";
 
 export type NcaabVarianceMeans = {
@@ -8,9 +9,7 @@ export type NcaabVarianceMeans = {
   note?: string;
 };
 
-function clip(n: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, n));
-}
+
 
 export function applyNcaabVarianceToMeans(input: ChanceInput): NcaabVarianceMeans {
   const {
@@ -71,3 +70,4 @@ export function applyNcaabVarianceToMeans(input: ChanceInput): NcaabVarianceMean
     note: `NCAAB Var: Continuity Regressed / Late Foul Risk applied.`
   };
 }
+

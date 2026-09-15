@@ -1,3 +1,4 @@
+import { clip } from "./math.ts";
 /** Last-10 scores on G. Recency-weighted, early-season damped for NFL. Empty log does not invent a streak. */
 import { analyzeScores, earlySeasonDamp, type ScoreGame } from "./form.ts";
 import type { FormBlock } from "./chance.ts";
@@ -16,9 +17,7 @@ export type RecencyMeans = {
   note?: string;
 };
 
-function clip(n: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, n));
-}
+
 
 function blockFor(tape: FormBlock[] | undefined, team: string): FormBlock | undefined {
   if (!tape?.length) return undefined;
@@ -66,3 +65,4 @@ export function applyRecencyToMeans(snap: RecencySnap, muH: number, muA: number)
     note: `Last-10 recency home WP ${home.wp.toFixed(2)} vs ${away.wp.toFixed(2)}. Damp ${damp.toFixed(2)}.`,
   };
 }
+

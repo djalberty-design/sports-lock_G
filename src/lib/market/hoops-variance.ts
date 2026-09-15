@@ -1,3 +1,4 @@
+import { clip } from "./math.ts";
 import type { ChanceInput } from "./chance.ts";
 
 export type HoopsVarianceMeans = {
@@ -8,9 +9,7 @@ export type HoopsVarianceMeans = {
   note?: string;
 };
 
-function clip(n: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, n));
-}
+
 
 export function applyHoopsVarianceToMeans(input: ChanceInput): HoopsVarianceMeans {
   const {
@@ -80,3 +79,4 @@ export function applyHoopsVarianceToMeans(input: ChanceInput): HoopsVarianceMean
     note: `Hoops Var: perimeter mismatch / rest applied.`
   };
 }
+

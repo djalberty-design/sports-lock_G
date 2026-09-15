@@ -1,3 +1,4 @@
+import { clip } from "./math.ts";
 import type { ChanceInput } from "./chance.ts";
 
 export type NbaVarianceMeans = {
@@ -8,9 +9,7 @@ export type NbaVarianceMeans = {
   note?: string;
 };
 
-function clip(n: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, n));
-}
+
 
 export function applyNbaVarianceToMeans(input: ChanceInput): NbaVarianceMeans {
   const {
@@ -87,3 +86,4 @@ export function applyNbaVarianceToMeans(input: ChanceInput): NbaVarianceMeans {
     note: `NBA Var: LoadMgmt / Perimeter geometry applied.`
   };
 }
+

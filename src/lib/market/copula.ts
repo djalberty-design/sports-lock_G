@@ -1,3 +1,4 @@
+import { clip01 } from "./math.ts";
 /**
  * Same-game joint chance using Clayton Archimedean Copula for tail dependence.
  * Cross-game legs stay a clean product.
@@ -106,7 +107,5 @@ export function growthScore(pJoint: number, decimalPayout: number, infoQuality: 
   return q * kelly * frac;
 }
 
-function clip01(p: number): number {
-  if (!Number.isFinite(p)) return 0.5;
-  return Math.min(0.985, Math.max(0.015, p));
-}
+
+

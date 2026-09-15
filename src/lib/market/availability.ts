@@ -1,3 +1,4 @@
+import { clip, invLogit } from "./math.ts";
 /** Injuries as availability on G. Listed-out cuts that team's mean. Questionable is half-weight + chaos. */
 export type AvailabilitySnap = {
   sport: string;
@@ -18,10 +19,7 @@ export type AvailabilityEffect = {
   note: string;
 };
 
-function invLogit(z: number): number {
-  const x = 1 / (1 + Math.exp(-z));
-  return Math.min(0.97, Math.max(0.03, x));
-}
+
 
 function n(v?: number): number | undefined {
   return v != null && Number.isFinite(v) && v >= 0 ? v : undefined;
@@ -75,7 +73,7 @@ export function availabilityEffect(input: AvailabilitySnap): AvailabilityEffect 
     homeMeanMul: 1 - homeCut,
     awayMeanMul: 1 - awayCut,
     chaosAdd: Math.min(0.05, 0.012 * (homeQ + awayQ)),
-    layerHome: invLogit(z),
+    layerHome: invLogit(z, 0.03, 0.97),
     precision: homeOuts + awayOuts > 0 ? 2.4 : homeQ + awayQ > 0 ? 1.4 : 0.9,
     empty: false,
     note: notes.join(" ") + " Availability moves G. It is not a headline.",
@@ -95,3 +93,4 @@ export function applyAvailabilityToMeans(
     note: a.empty ? undefined : a.note,
   };
 }
+

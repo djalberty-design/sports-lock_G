@@ -1,3 +1,4 @@
+import { clip } from "./math.ts";
 import type { ChanceInput } from "./chance.ts";
 
 export type NcaafBlowoutMeans = {
@@ -8,9 +9,7 @@ export type NcaafBlowoutMeans = {
   note?: string;
 };
 
-function clip(n: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, n));
-}
+
 
 export function applyNcaafBlowoutToMeans(input: ChanceInput): NcaafBlowoutMeans {
   const { sport, homeTalentRating, awayTalentRating } = input;
@@ -60,3 +59,4 @@ export function applyNcaafBlowoutToMeans(input: ChanceInput): NcaafBlowoutMeans 
       : undefined
   };
 }
+

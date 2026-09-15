@@ -1,3 +1,4 @@
+import { clip } from "./math.ts";
 /**
  * Hard Rock-shaped market sheet.
  *
@@ -119,9 +120,7 @@ type Ctx = {
   awayPitcherHand?: "L" | "R";
 };
 
-function clip(n: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, n));
-}
+
 
 function halfLine(mu: number): number {
   return Math.floor(mu) + 0.5;
@@ -1147,3 +1146,4 @@ function periodBundle(
   }
   return { winners, totals };
 }
+

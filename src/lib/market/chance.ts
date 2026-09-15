@@ -1,3 +1,4 @@
+import { invLogit, normalCdf } from "./math.ts";
 export type LayerFamily = "market" | "crowd" | "model" | "context";
 
 export type ChanceLayer = {
@@ -148,8 +149,6 @@ export type ChanceReport = {
   because: string;
 };
 
-const CLIP_LO = 0.12;
-const CLIP_HI = 0.88;
 const FINAL_LO = 0.14;
 const FINAL_HI = 0.86;
 
@@ -158,10 +157,7 @@ export function logit(p: number): number {
   return Math.log(x / (1 - x));
 }
 
-export function invLogit(z: number, lo = CLIP_LO, hi = CLIP_HI): number {
-  const p = 1 / (1 + Math.exp(-z));
-  return Math.min(hi, Math.max(lo, p));
-}
+
 
 function unit01(n?: number): number | null {
   if (n == null || !Number.isFinite(n)) return null;
@@ -170,12 +166,7 @@ function unit01(n?: number): number | null {
   return p;
 }
 
-export function normalCdf(z: number): number {
-  const t = 1 / (1 + 0.2316419 * Math.abs(z));
-  const d = 0.3989422804 * Math.exp((-z * z) / 2);
-  const p = d * t * (0.319381743 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
-  return z >= 0 ? 1 - p : p;
-}
+
 
 export function parseRecord(summary?: string): { w: number; l: number; t: number; n: number; wp: number } | null {
   if (!summary) return null;
@@ -958,3 +949,4 @@ case "points_nba":
       return 0;
   }
 }
+

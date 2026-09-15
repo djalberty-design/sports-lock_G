@@ -1,3 +1,4 @@
+import { clip } from "./math.ts";
 import type { MarketType, PublicSplit, ScanRow, TapeLean } from "./types.ts";
 
 export type TapeRead = {
@@ -19,13 +20,11 @@ export type RawBookTape = {
   source: string;
 };
 
-function clip01(n: number): number {
-  return Math.min(0.97, Math.max(0.03, n));
-}
+
 
 export function analyzeTape(ticketPct: number, handlePct: number, steam = false): TapeRead {
-  const t = clip01(ticketPct);
-  const h = clip01(handlePct);
+  const t = clip(ticketPct, 0.03, 0.97);
+  const h = clip(handlePct, 0.03, 0.97);
   const divergence = h - t;
   const abs = Math.abs(divergence);
   if (abs < 0.07 && !steam) {
@@ -318,3 +317,5 @@ export const AN_SPORT: Record<string, string> = {
   NCAAF: "ncaaf",
   NCAAB: "ncaab",
 };
+
+
