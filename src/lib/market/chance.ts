@@ -101,6 +101,12 @@ export type ChanceInput = {
   parkHrFactor?: number;
   homeTalentRating?: number;
   awayTalentRating?: number;
+  homeGoalieGsax?: number;
+  awayGoalieGsax?: number;
+  homeIsB2B?: boolean;
+  awayIsB2B?: boolean;
+  homeTravelMiles?: number;
+  awayTravelMiles?: number;
   venue?: string;
   seriesHomeWins?: number;
   seriesAwayWins?: number;
