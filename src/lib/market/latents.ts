@@ -11,6 +11,7 @@ import { applySplitsToMeans } from "./splits-g.ts";
 import { applyMatchupToMeans } from "./matchup-g.ts";
 import { capLatentToClose } from "./g-cap.ts";
 import { applyOfficialsToMeans, type OfficialPosting } from "./officials.ts";
+import { enrichOfficialsWithTendencies } from "./officials-registry.ts";
 
 export type LiveLatentFields = {
   inPlay?: boolean;
@@ -56,7 +57,10 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
   let chaos = Math.max(0, Math.min(0.22, (total - leagueTotal(input.sport)) / (leagueTotal(input.sport) * 4)));
   if (!venueMeans.enclosed && input.weatherWind != null && input.weatherWind >= 20) chaos += 0.05;
   if (!venueMeans.enclosed && input.weatherPrecip != null && input.weatherPrecip >= 40) chaos += 0.03;
-  const officialMeans = applyOfficialsToMeans({ sport: input.sport, officials: input.officials }, 1, 1);
+  
+  const enrichedOfficials = enrichOfficialsWithTendencies(input.officials ?? [], input.sport);
+  const officialMeans = applyOfficialsToMeans({ sport: input.sport, officials: enrichedOfficials }, 1, 1);
+  
   chaos = Math.min(0.28, chaos + avail.chaosAdd + officialMeans.chaosAdd);
   const latent = latentFromScores({
     eventId: input.eventId,
