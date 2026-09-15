@@ -83,6 +83,17 @@ export type ChanceInput = {
   awayPa?: number;
   weatherTemp?: number;
   weatherWind?: number;
+  windSpeed?: number;
+  homeQbEpa?: number;
+  awayQbEpa?: number;
+  homeBackupQbEpa?: number;
+  awayBackupQbEpa?: number;
+  homeQbIsBackup?: boolean;
+  awayQbIsBackup?: boolean;
+  homePassBlockWinRate?: number;
+  awayPassBlockWinRate?: number;
+  homePassRushWinRate?: number;
+  awayPassRushWinRate?: number;
   weatherPrecip?: number;
   venue?: string;
   seriesHomeWins?: number;
