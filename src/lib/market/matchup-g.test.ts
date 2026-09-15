@@ -46,3 +46,66 @@ test("Phillies/Braves posted looks fire defense, underlying, platoon, pitcher", 
   assert.equal(m.empty, false);
   assert.ok(m.muH !== 4.4 || m.muA !== 4.4);
 });
+
+test("bullpen exhaustion inflates opponent means and chaos", () => {
+  const base = applyMatchupToMeans(
+    { 
+      sport: "MLB", 
+      homePitcherHand: "L", 
+      awayPitcherHand: "R", 
+      homeEra: 3.2, 
+      awayEra: 4.1, 
+      homeWhip: 1.1, 
+      awayWhip: 1.3,
+      homeBullpenXfip: 4.2,
+      awayBullpenXfip: 4.2,
+      homeBullpenRest: 0.8,
+      awayBullpenRest: 0.8
+    },
+    4.4,
+    4.4,
+  );
+
+  const exhausted = applyMatchupToMeans(
+    { 
+      sport: "MLB", 
+      homePitcherHand: "L", 
+      awayPitcherHand: "R", 
+      homeEra: 3.2, 
+      awayEra: 4.1, 
+      homeWhip: 1.1, 
+      awayWhip: 1.3,
+      homeBullpenXfip: 4.2, // normal bullpen
+      awayBullpenXfip: 5.5, // terrible bullpen
+      homeBullpenRest: 0.8,
+      awayBullpenRest: 0.1 // critically exhausted
+    },
+    4.4,
+    4.4,
+  );
+
+  // Exhausted away bullpen -> Home scoring mean should drastically increase
+  assert.ok(exhausted.muH > base.muH);
+  assert.ok(exhausted.chaosAdd > base.chaosAdd);
+});
+
+test("missing bullpen data decays smoothly back to starter logic", () => {
+  const missing = applyMatchupToMeans(
+    { 
+      sport: "MLB", 
+      homePitcherHand: "L", 
+      awayPitcherHand: "R", 
+      homeEra: 3.2, 
+      awayEra: 4.1, 
+      homeWhip: 1.1, 
+      awayWhip: 1.3
+      // No bullpen data
+    },
+    4.4,
+    4.4,
+  );
+  
+  assert.equal(missing.empty, false);
+  assert.ok(missing.muH > 0);
+  assert.ok(missing.muA > 0);
+});

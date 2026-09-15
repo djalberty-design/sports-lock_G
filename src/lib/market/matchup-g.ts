@@ -11,6 +11,10 @@ export type MatchupSnap = {
   awayWhip?: number;
   homePitcherHand?: "L" | "R";
   awayPitcherHand?: "L" | "R";
+  homeBullpenXfip?: number;
+  awayBullpenXfip?: number;
+  homeBullpenRest?: number;
+  awayBullpenRest?: number;
 };
 
 export type MatchupLayer = {
@@ -175,17 +179,43 @@ export function applyMatchupToMeans(snap: MatchupSnap, muH: number, muA: number)
   let nextA = muA;
   let chaosAdd = 0;
 
-  // 1. Pitcher Volatility (ERA/WHIP)
+  // 1. Pitcher Volatility (ERA/WHIP) & Bullpen Time-Weighted Blending
   const mlbAvgEra = 4.10;
+  const mlbAvgXfip = 4.20;
   
-  // Output a fractional multiplier to alter the opposing team's scoring mean
-  const homePitcherMul = clip(homeEra / mlbAvgEra, 0.8, 1.25);
-  const awayPitcherMul = clip(awayEra / mlbAvgEra, 0.8, 1.25);
+  // Base starter multipliers
+  const homeStarterModifier = clip(homeEra / mlbAvgEra, 0.8, 1.25);
+  const awayStarterModifier = clip(awayEra / mlbAvgEra, 0.8, 1.25);
   
-  // Home pitcher affects Away team's scoring
-  nextA *= homePitcherMul;
-  // Away pitcher affects Home team's scoring
-  nextH *= awayPitcherMul;
+  let homeFinalModifier = homeStarterModifier;
+  let awayFinalModifier = awayStarterModifier;
+  let homeExhaustionPenalty = 1.0;
+  let awayExhaustionPenalty = 1.0;
+
+  const { homeBullpenXfip, awayBullpenXfip, homeBullpenRest, awayBullpenRest } = snap;
+
+  if (homeBullpenXfip != null && !Number.isNaN(homeBullpenXfip) && homeBullpenRest != null && !Number.isNaN(homeBullpenRest)) {
+    const bullpenModifier = clip(homeBullpenXfip / mlbAvgXfip, 0.8, 1.25);
+    homeFinalModifier = (0.65 * homeStarterModifier) + (0.35 * bullpenModifier);
+    if (homeBullpenRest < 0.30) {
+      homeExhaustionPenalty = 1.03;
+      chaosAdd += 0.02;
+    }
+  }
+
+  if (awayBullpenXfip != null && !Number.isNaN(awayBullpenXfip) && awayBullpenRest != null && !Number.isNaN(awayBullpenRest)) {
+    const bullpenModifier = clip(awayBullpenXfip / mlbAvgXfip, 0.8, 1.25);
+    awayFinalModifier = (0.65 * awayStarterModifier) + (0.35 * bullpenModifier);
+    if (awayBullpenRest < 0.30) {
+      awayExhaustionPenalty = 1.03;
+      chaosAdd += 0.02;
+    }
+  }
+
+  // Home pitching affects Away team's scoring
+  nextA *= homeFinalModifier * homeExhaustionPenalty;
+  // Away pitching affects Home team's scoring
+  nextH *= awayFinalModifier * awayExhaustionPenalty;
 
   // Pitcher Isolation Metric (ERA / WHIP) to estimate runs per baserunner (home run dependency)
   const homePitcherIso = homeEra / homeWhip;
