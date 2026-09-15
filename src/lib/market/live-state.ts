@@ -1,4 +1,5 @@
-import { normalCdf, totalSigma } from "./chance.ts";
+import { totalSigma } from "./chance.ts";
+import { normalCdf } from "./math.ts";
 
 export type LiveState = {
   eventId: string;
@@ -238,3 +239,4 @@ export function applyLiveRemaining(
     note: `${g.note} | Live remaining points applied.`.trim(),
   };
 }
+

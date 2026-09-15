@@ -1,4 +1,4 @@
-import { clip } from "./math.ts";
+import { clip, invLogit, normalCdf } from "./math.ts";
 /**
  * Hard Rock-shaped market sheet.
  *
@@ -9,10 +9,8 @@ import { clip } from "./math.ts";
  */
 import {
   homeCoverProb,
-  invLogit,
   leagueTotal,
   logit,
-  normalCdf,
   overProb,
   poissonOver,
 } from "./chance.ts";
@@ -1146,4 +1144,5 @@ function periodBundle(
   }
   return { winners, totals };
 }
+
 

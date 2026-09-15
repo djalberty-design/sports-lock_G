@@ -1,4 +1,3 @@
-import { clip } from "./math.ts";
 /**
  * Player-bet (prop) ensemble.
  *
@@ -9,7 +8,8 @@ import { clip } from "./math.ts";
  * Florida: college player bets are illegal. Never a lock.
  */
 
-import { invLogit, leagueTotal, logit, normalCdf, poissonOver } from "./chance.ts";
+import { leagueTotal, logit, poissonOver } from "./chance.ts";
+import { clip, invLogit, normalCdf } from "./math.ts";
 import { analyzeScores, blendRate } from "./form.ts";
 import { allowedForStat, processFromLooks, underlyingOffense, type TeamLooks } from "./looks.ts";
 import { americanToImplied, twoWayNoVig } from "./engine.ts";
@@ -858,5 +858,7 @@ export function propContextFromBrief(
     awayLooks: brief?.awayLooks,
   };
 }
+
+
 
 
