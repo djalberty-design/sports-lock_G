@@ -15,19 +15,20 @@ test("ESPN crew names parse, tendency stays empty", () => {
   assert.equal(crew[0]?.name, "Angel Hernandez");
   const layer = officialLayer({ sport: "MLB", officials: crew });
   assert.equal(layer.empty, true);
-  const m = applyOfficialsToMeans({ sport: "MLB", officials: crew }, 4.4, 4.4);
+  // Latents pipeline passes 1, 1 for multipliers
+  const m = applyOfficialsToMeans({ sport: "MLB", officials: crew }, 1, 1);
   assert.equal(m.empty, true);
-  assert.equal(m.muH, 4.4);
+  assert.equal(m.muH, 1);
 });
 
-test("posted plate run expectancy moves total, not a fake favorite", () => {
+test("posted plate totalOverBias moves total, not a fake favorite", () => {
   const m = applyOfficialsToMeans(
-    { sport: "MLB", officials: [{ name: "Plate", role: "HP", runExp: 0.8 }] },
-    4.4,
-    4.4,
+    { sport: "MLB", officials: [{ name: "Plate", role: "HP", totalOverBias: 0.03 }] },
+    1,
+    1,
   );
   assert.equal(m.empty, false);
-  assert.ok(m.muH > 4.4 && m.muA > 4.4);
+  assert.ok(m.muH > 1 && m.muA > 1);
 });
 
 test("missing crew is empty", () => {

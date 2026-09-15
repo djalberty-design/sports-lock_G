@@ -2,10 +2,11 @@
 export type OfficialPosting = {
   name: string;
   role?: string;
-  runExp?: number;
-  overLean?: number;
-  homeLean?: number;
-  whistle?: number;
+  homeWinBias?: number; // Deviation from 50%
+  totalOverBias?: number; // Deviation from league average total
+  strikeZoneWidth?: number; // MLB
+  penaltyRate?: number; // NFL/NHL
+  foulRate?: number; // NBA
 };
 
 export type OfficialSnap = {
@@ -65,8 +66,14 @@ export function officialLayer(snap: OfficialSnap): OfficialLayer {
   const crew = snap.officials ?? [];
   const names = crew.map(displayName).filter(Boolean);
   const posted = crew.filter(
-    (o) => o.runExp != null || o.overLean != null || o.homeLean != null || o.whistle != null,
+    (o) =>
+      o.homeWinBias != null ||
+      o.totalOverBias != null ||
+      o.strikeZoneWidth != null ||
+      o.penaltyRate != null ||
+      o.foulRate != null,
   );
+  
   if (!crew.length) {
     return {
       id: "officials",
@@ -77,6 +84,7 @@ export function officialLayer(snap: OfficialSnap): OfficialLayer {
       note: "Looked up crew. ESPN/RefMetrics file not posted. Empty = Looked, not an invented strike zone.",
     };
   }
+  
   if (!posted.length) {
     return {
       id: "officials",
@@ -87,7 +95,11 @@ export function officialLayer(snap: OfficialSnap): OfficialLayer {
       note: `Crew posted: ${names.slice(0, 3).join(", ")}. Tendency file empty — no invented ATS or zone.`,
     };
   }
-  const home = posted.reduce((s, o) => s + (o.homeLean != null ? o.homeLean : 0.5), 0) / posted.length;
+  
+  const home =
+    posted.reduce((s, o) => s + (o.homeWinBias != null ? o.homeWinBias + 0.5 : 0.5), 0) /
+    posted.length;
+    
   return {
     id: "officials",
     label: "Officials / umpire",
@@ -102,34 +114,49 @@ export function applyOfficialsToMeans(snap: OfficialSnap, muH: number, muA: numb
   const layer = officialLayer(snap);
   const crew = snap.officials ?? [];
   const posted = crew.filter(
-    (o) => o.runExp != null || o.overLean != null || o.homeLean != null || o.whistle != null,
+    (o) =>
+      o.homeWinBias != null ||
+      o.totalOverBias != null ||
+      o.strikeZoneWidth != null ||
+      o.penaltyRate != null ||
+      o.foulRate != null,
   );
+
+  // The Empty Look Law (Strict Guardrail)
   if (!posted.length) {
-    return { muH, muA, chaosAdd: 0, empty: true, note: layer.note, layer };
+    return { muH: 1, muA: 1, chaosAdd: 0, empty: true, note: "", layer };
   }
+
   let nextH = muH;
   let nextA = muA;
   let chaosAdd = 0;
+
   for (const o of posted) {
-    if (o.runExp != null && Number.isFinite(o.runExp)) {
-      const pace = clip(1 + o.runExp / 12, 0.96, 1.06);
+    if (o.totalOverBias != null && Number.isFinite(o.totalOverBias)) {
+      const pace = clip(1 + o.totalOverBias, 0.95, 1.05);
       nextH *= pace;
       nextA *= pace;
     }
-    if (o.overLean != null && Number.isFinite(o.overLean)) {
-      const pace = clip(1 + (o.overLean - 0.5) * 0.08, 0.96, 1.05);
-      nextH *= pace;
-      nextA *= pace;
-    }
-    if (o.homeLean != null && Number.isFinite(o.homeLean)) {
-      const tilt = clip((o.homeLean - 0.5) * 0.06, -0.03, 0.03);
+    
+    if (o.homeWinBias != null && Number.isFinite(o.homeWinBias)) {
+      const tilt = clip(o.homeWinBias, -0.05, 0.05);
       nextH *= 1 + tilt;
       nextA *= 1 - tilt;
     }
-    if (o.whistle != null && Number.isFinite(o.whistle)) {
-      chaosAdd += clip((o.whistle - 1) * 0.04, -0.02, 0.04);
+
+    if (o.strikeZoneWidth != null && Number.isFinite(o.strikeZoneWidth)) {
+      chaosAdd += clip(o.strikeZoneWidth, -0.02, 0.04);
+    }
+    
+    if (o.penaltyRate != null && Number.isFinite(o.penaltyRate)) {
+      chaosAdd += clip(o.penaltyRate, -0.02, 0.04);
+    }
+    
+    if (o.foulRate != null && Number.isFinite(o.foulRate)) {
+      chaosAdd += clip(o.foulRate, -0.02, 0.04);
     }
   }
+
   return {
     muH: nextH,
     muA: nextA,
