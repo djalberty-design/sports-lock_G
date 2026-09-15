@@ -777,10 +777,25 @@ function dynamicBlend(
     }
   }
   
+  let sharpMultiplier = 1.0;
   if (handlePct != null && ticketPct != null && ticketPct > 0) {
-    const ratio = handlePct / ticketPct;
-    if (ratio >= 1.5) wMarket *= 1.25;
-    else if (ratio < 0.7) wMarket *= 0.75;
+    const diff = handlePct - ticketPct;
+    
+    // Sharp divergence (handle > ticket by 10%+)
+    if (diff >= 10) {
+      wMarket += 0.2;
+      wPool = Math.max(0, wPool - 0.2);
+      
+      // Extreme divergence (handle > ticket by 20%+)
+      if (diff >= 20) {
+        sharpMultiplier = 1.05;
+      }
+    } else {
+      // Legacy ratio fallbacks for non-sharp divergence
+      const ratio = handlePct / ticketPct;
+      if (ratio >= 1.5) wMarket *= 1.25;
+      else if (ratio < 0.7) wMarket *= 0.75;
+    }
   }
   
   const parts: { w: number; v: number }[] = [];
@@ -790,7 +805,11 @@ function dynamicBlend(
   
   if (!parts.length) return 0.5;
   const w = parts.reduce((s, p) => s + p.w, 0);
-  return parts.reduce((s, p) => s + (p.w / w) * p.v, 0);
+  let blended = parts.reduce((s, p) => s + (p.w / w) * p.v, 0);
+  
+  blended *= sharpMultiplier;
+  
+  return Math.min(0.99, Math.max(0.01, blended));
 }
 
 function applyEnsemble(rows: ScanRow[], snapshot: DeskSnapshot): ScanRow[] {
@@ -917,9 +936,23 @@ function applyEnsemble(rows: ScanRow[], snapshot: DeskSnapshot): ScanRow[] {
         poolFair = isOver ? pOver : 1 - pOver;
       }
       
-      const tPct = r.ticketPct ?? (r.side === "home" ? chanceInput.ticketHome : undefined);
-      const hPct = r.handlePct ?? (r.side === "home" ? chanceInput.handleHome : undefined);
+      let tPct = r.ticketPct;
+      let hPct = r.handlePct;
+      if (tPct == null && chanceInput.ticketHome != null) {
+        tPct = r.side === "home" ? chanceInput.ticketHome : 100 - chanceInput.ticketHome;
+      }
+      if (hPct == null && chanceInput.handleHome != null) {
+        hPct = r.side === "home" ? chanceInput.handleHome : 100 - chanceInput.handleHome;
+      }
       const fairProb = dynamicBlend(simFair, poolFair, marketFair, r.start, tPct, hPct);
+      
+      let tapeLean = r.tapeLean;
+      if (hPct != null && tPct != null) {
+        const diff = hPct - tPct;
+        if (diff >= 10 && chanceInput.steam) {
+          tapeLean = "sharp_rlm";
+        }
+      }
       
       const playerUse = r.player ? usageOf(usage, r.player) : undefined;
       const listedOut = Boolean(playerUse?.standDown);
@@ -949,6 +982,7 @@ function applyEnsemble(rows: ScanRow[], snapshot: DeskSnapshot): ScanRow[] {
         leftover,
         processLooked: process.empty,
         processSource: process.source,
+        tapeLean,
         tag,
         action,
         reason,
