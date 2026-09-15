@@ -1,8 +1,8 @@
 /**
- * Guest side of the grok-web ↔ sandbox preview postMessage bridge.
+ * Guest side of the preview postMessage bridge.
  *
- * Activates only when this page is framed by an allowlisted Grok embedder.
- * Top-level runs (download/export, local `npm run dev`, deployed sites) noop.
+ * Activates only when this page is framed by an allowlisted preview embedder
+ * (localhost dev or Vercel preview). Top-level runs noop silently.
  */
 
 import { z } from "zod";
@@ -15,7 +15,7 @@ export {
   resolveParentEmbedderOrigin,
 } from "./preview-embedder-origin";
 
-export const PREVIEW_BRIDGE_CHANNEL = "grok-preview-bridge" as const;
+export const PREVIEW_BRIDGE_CHANNEL = "sportslock-preview-bridge" as const;
 export const PREVIEW_BRIDGE_VERSION = 1 as const;
 
 const EnvelopeSchema = z.object({

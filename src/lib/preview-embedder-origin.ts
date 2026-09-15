@@ -1,10 +1,22 @@
+/**
+ * Preview embedder origin detection — determines whether the app is running
+ * inside a trusted preview frame (local dev server or Vercel preview).
+ * Formerly grok.com-specific; now checks localhost and Vercel preview origins only.
+ */
 export function isGrokEmbedderOrigin(origin: string): boolean {
+  // Legacy name kept for call-site compatibility.
+  return isPreviewEmbedderOrigin(origin);
+}
+
+export function isPreviewEmbedderOrigin(origin: string): boolean {
   try {
     const url = new URL(origin);
     if (url.protocol !== "https:" && url.protocol !== "http:") return false;
     const host = url.hostname.toLowerCase();
-    if (host === "grok.com" || host.endsWith(".grok.com")) return true;
+    // Localhost dev server
     if (host === "localhost" || host === "127.0.0.1" || host === "[::1]") return true;
+    // Vercel preview deployments
+    if (host.endsWith(".vercel.app")) return true;
     return false;
   } catch {
     return false;
@@ -13,7 +25,7 @@ export function isGrokEmbedderOrigin(origin: string): boolean {
 
 export function isSandboxPreviewGuestHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
-  return host === "grok-sandbox.com" || host.endsWith(".grok-sandbox.com");
+  return host.endsWith(".vercel.app") || host === "sportslock.app";
 }
 
 function isRemintPreviewPair(guestHost: string, parentHost: string): boolean {
@@ -25,7 +37,7 @@ function isRemintPreviewPair(guestHost: string, parentHost: string): boolean {
   const label = guest.slice(0, i);
   const rest = guest.slice(i + sep.length);
   if (label.includes(".") || !rest.includes(".")) return false;
-  return parent === rest || parent === `grok.${rest}`;
+  return parent === rest;
 }
 
 export function resolveParentEmbedderOrigin(
@@ -41,7 +53,7 @@ export function resolveParentEmbedderOrigin(
         candidate.includes("://") ? candidate : `https://${candidate}`,
       );
       if (url.protocol !== "https:" && url.protocol !== "http:") continue;
-      if (isGrokEmbedderOrigin(url.origin)) return url.origin;
+      if (isPreviewEmbedderOrigin(url.origin)) return url.origin;
       if (
         isSandboxPreviewGuestHost(guestHostname) ||
         isRemintPreviewPair(guestHostname, url.hostname)

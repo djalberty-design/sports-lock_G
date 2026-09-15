@@ -110,9 +110,9 @@ export function BoardPage() {
         </section>
       ) : null}
 
-      <details className="paper-card overflow-x-auto p-0">
+      <details className="paper-card overflow-x-auto p-0" open>
 <summary className="cursor-pointer bg-wash px-4 py-3 text-sm font-medium text-ink">
-  Every delayed number on this board (Wide Open)
+  All numbers on this board (Wide Open — delayed consensus prices)
 </summary>
         <table className="w-full min-w-[860px] text-left text-sm">
           <thead className="bg-wash text-muted">
@@ -246,84 +246,172 @@ function GameGrid({
       </section>
     );
   }
+
+  const core = games.filter((g) => g.action === "enter_ticket");
+  const lotto = games.filter((g) => g.action !== "enter_ticket");
+
   return (
     <section>
-      <h2 className="font-display mb-3 text-xl text-ink">{title}</h2>
-      <div className="grid gap-3 md:grid-cols-2">
-        {games.map((g) => {
-          const brief = briefs?.find((b) => b.eventId === g.eventId);
-          const quote = quotes?.find((q) => q.eventId === g.eventId);
-          const awayRec = brief?.awayRecord ?? quote?.awayRecord;
-          const homeRec = brief?.homeRecord ?? quote?.homeRecord;
-          const pred = predict?.find((p) => p.eventId === g.eventId);
-          const fav = researchedFavorite(
-            rows.filter((r) => r.eventId === g.eventId),
-            brief,
-            { home: g.home, away: g.away, kalshiHome: pred?.kalshiHome, polyHome: pred?.polyHome },
-          );
-          const lean = leanEnglish({
-            home: g.home,
-            away: g.away,
-            oddsHome: g.side === "home" ? g.fairProb : 1 - g.fairProb,
-            espnHome: brief?.espnHomeWin,
-            ensembleHome: fav?.homeChance,
-            crowdHome: pred?.kalshiHome ?? pred?.polyHome,
-          });
-          return (
-            <Link key={g.eventId} to="/game/$eventId" params={{ eventId: g.eventId }} className="paper-card p-4">
-              <p className="stamp text-muted">
-                {sportLabel(g.sport)}
-                {g.phase === "preseason" ? " · Preseason" : g.phase === "playoff" ? " · Playoff" : ""}
-                {g.scheduleOnly ? " · Odds soon" : ""}
-                {isTodayEt(g.start) && !g.inPlay ? " · Today" : ""}
-              </p>
-              <LiveStamp row={g} className="mt-1 block" />
-              <div className="mt-2 flex items-center gap-3">
-                {(g.awayLogo || g.awayAbbr) ? (
-                  <img
-                    src={g.awayLogo || espnLogoUrl(g.sport, g.awayAbbr) || ""}
-                    alt=""
-                    width={32}
-                    height={32}
-                    className="size-8 shrink-0 rounded-full bg-wash object-contain"
-                  />
-                ) : null}
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-ink">{g.away}{awayRec ? ` (${awayRec})` : ""}</p>
-                  <p className="font-medium text-ink">{g.home}{homeRec ? ` (${homeRec})` : ""}</p>
-                </div>
-                {(g.homeLogo || g.homeAbbr) ? (
-                  <img
-                    src={g.homeLogo || espnLogoUrl(g.sport, g.homeAbbr) || ""}
-                    alt=""
-                    width={32}
-                    height={32}
-                    className="size-8 shrink-0 rounded-full bg-wash object-contain"
-                  />
-                ) : null}
-              </div>
-              <p className="mt-1 text-sm text-gold">{formatKickoff(g.start, true)}</p>
-              <p className="mt-2 text-sm text-ink">{lean.title}</p>
-              {fav ? (
-                <WagerMeter
-                  className="mt-3"
-                  size="sm"
-                  chance={fav.chance}
-                  price={g.price}
-                  label={`${fav.name} to win`}
-                />
-              ) : Number.isFinite(g.fairProb) ? (
-                <WagerMeter className="mt-3" size="sm" chance={g.fairProb} price={g.price} />
-              ) : null}
-              <p className="mt-2 text-xs text-muted">
-                {brief?.weather ?? ""}
-                {brief?.injuryCount ? ` · ${brief.injuryCount} injury listings` : ""}
-              </p>
-              <p className="mt-2 text-xs font-medium text-gold">Bet this one game →</p>
-            </Link>
-          );
-        })}
-      </div>
+      <h2 className="font-display mb-1 text-xl text-ink">{title}</h2>
+
+      {core.length > 0 && (
+        <>
+          {/* ── CORE 85% ── disciplined, high-edge plays */}
+          <div className="mb-1 mt-3 flex items-center gap-2">
+            <span className="h-px flex-1 bg-gold/30" />
+            <span className="text-xs font-semibold tracking-widest text-gold">
+              CORE · 85% BANKROLL
+            </span>
+            <span className="h-px flex-1 bg-gold/30" />
+          </div>
+          <p className="mb-3 text-xs text-muted">
+            Fair or better vs the consensus price. Disciplined plays only.
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {core.map((g) => (
+              <GameCard
+                key={g.eventId}
+                game={g}
+                isCore
+                briefs={briefs}
+                quotes={quotes}
+                predict={predict}
+                rows={rows}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {lotto.length > 0 && (
+        <>
+          {/* ── FUN / LOTTO 15% ── high-variance, lower-edge plays */}
+          <div className="mb-1 mt-5 flex items-center gap-2">
+            <span className="h-px flex-1 bg-ink/20" />
+            <span className="text-xs font-semibold tracking-widest text-muted">
+              FUN / LOTTO · 15% BANKROLL
+            </span>
+            <span className="h-px flex-1 bg-ink/20" />
+          </div>
+          <p className="mb-3 text-xs text-muted">
+            Priced over fair value — fun money only. Never the plan.
+          </p>
+          <div className="grid gap-3 opacity-75 md:grid-cols-2">
+            {lotto.map((g) => (
+              <GameCard
+                key={g.eventId}
+                game={g}
+                isCore={false}
+                briefs={briefs}
+                quotes={quotes}
+                predict={predict}
+                rows={rows}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </section>
+  );
+}
+
+function GameCard({
+  game: g,
+  isCore,
+  briefs,
+  quotes,
+  predict,
+  rows,
+}: {
+  game: ScanRow;
+  isCore: boolean;
+  briefs?: EventBrief[];
+  quotes?: { eventId: string; awayRecord?: string; homeRecord?: string }[];
+  predict?: PredictQuote[];
+  rows: ScanRow[];
+}) {
+  const brief = briefs?.find((b) => b.eventId === g.eventId);
+  const quote = quotes?.find((q) => q.eventId === g.eventId);
+  const awayRec = brief?.awayRecord ?? quote?.awayRecord;
+  const homeRec = brief?.homeRecord ?? quote?.homeRecord;
+  const pred = predict?.find((p) => p.eventId === g.eventId);
+  const fav = researchedFavorite(
+    rows.filter((r) => r.eventId === g.eventId),
+    brief,
+    { home: g.home, away: g.away, kalshiHome: pred?.kalshiHome, polyHome: pred?.polyHome },
+  );
+  const lean = leanEnglish({
+    home: g.home,
+    away: g.away,
+    oddsHome: g.side === "home" ? g.fairProb : 1 - g.fairProb,
+    espnHome: brief?.espnHomeWin,
+    ensembleHome: fav?.homeChance,
+    crowdHome: pred?.kalshiHome ?? pred?.polyHome,
+  });
+
+  return (
+    <Link
+      to="/game/$eventId"
+      params={{ eventId: g.eventId }}
+      className={[
+        "paper-card p-4 transition-all",
+        isCore
+          ? "border-l-2 border-l-gold ring-1 ring-gold/20"
+          : "border-l-2 border-l-transparent",
+      ].join(" ")}
+    >
+      {isCore && (
+        <p className="stamp mb-1 text-gold">THE PLAY</p>
+      )}
+      <p className="stamp text-muted">
+        {sportLabel(g.sport)}
+        {g.phase === "preseason" ? " · Preseason" : g.phase === "playoff" ? " · Playoff" : ""}
+        {g.scheduleOnly ? " · Odds soon" : ""}
+        {isTodayEt(g.start) && !g.inPlay ? " · Today" : ""}
+      </p>
+      <LiveStamp row={g} className="mt-1 block" />
+      <div className="mt-2 flex items-center gap-3">
+        {(g.awayLogo || g.awayAbbr) ? (
+          <img
+            src={g.awayLogo || espnLogoUrl(g.sport, g.awayAbbr) || ""}
+            alt=""
+            width={32}
+            height={32}
+            className="size-8 shrink-0 rounded-full bg-wash object-contain"
+          />
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-ink">{g.away}{awayRec ? ` (${awayRec})` : ""}</p>
+          <p className="font-medium text-ink">{g.home}{homeRec ? ` (${homeRec})` : ""}</p>
+        </div>
+        {(g.homeLogo || g.homeAbbr) ? (
+          <img
+            src={g.homeLogo || espnLogoUrl(g.sport, g.homeAbbr) || ""}
+            alt=""
+            width={32}
+            height={32}
+            className="size-8 shrink-0 rounded-full bg-wash object-contain"
+          />
+        ) : null}
+      </div>
+      <p className="mt-1 text-sm text-gold">{formatKickoff(g.start, true)}</p>
+      <p className="mt-2 text-sm text-ink">{lean.title}</p>
+      {fav ? (
+        <WagerMeter
+          className="mt-3"
+          size="sm"
+          chance={fav.chance}
+          price={g.price}
+          label={`${fav.name} to win`}
+        />
+      ) : Number.isFinite(g.fairProb) ? (
+        <WagerMeter className="mt-3" size="sm" chance={g.fairProb} price={g.price} />
+      ) : null}
+      <p className="mt-2 text-xs text-muted">
+        {brief?.weather ?? ""}
+        {brief?.injuryCount ? ` · ${brief.injuryCount} injury listings` : ""}
+      </p>
+      <p className="mt-2 text-xs font-medium text-gold">Bet this one game →</p>
+    </Link>
   );
 }

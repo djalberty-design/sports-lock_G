@@ -15,8 +15,9 @@ import {
 } from "./gate-identity.server";
 import { GATE_SESSION_MARKER_COOKIE } from "./gate-session-marker";
 
-export const GATE_PROVIDER_ID = "grok-gate";
-const GATE_ACCOUNT_ISSUER = "https://grok.com";
+export const GATE_PROVIDER_ID = "sl-gate";
+/** Auth broker issuer — the OAuth server that issues gate tokens. */
+const GATE_ACCOUNT_ISSUER = process.env.AUTH_BROKER_ISSUER ?? "https://auth.sportslock.app";
 const LOG = "[gate-identity]";
 
 type GateAccount = Parameters<typeof handleOAuthUserInfo>[1]["account"];

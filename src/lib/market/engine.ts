@@ -146,17 +146,10 @@ export function pairTwoWays(quotes: QuoteLine[]): OppositePair[] {
   return pairs;
 }
 
-function isGameCompleted(phase?: string): boolean {
-  if (!phase) return false;
-  const p = phase.toLowerCase();
-  return p === "post" || p === "final" || p === "status_final";
-}
-
 function tagFor(ev: number, hold: number, row: Omit<ScanRow, "tag" | "action" | "reason" | "conviction" | "spark">): ScanTag {
   if (row.venueNote === "dk_sportsbook" || row.venueNote === "fd_sportsbook") return "illegal_fl";
   if (row.isProp && isCollegeSport(row.sport)) return "illegal_fl";
   if (row.isProp && !isKnownMarket(row.selection, row.marketType)) return "unknown_market";
-  if (isGameCompleted(row.phase)) return "in_play"; // Hides finished games by standing them down
   if (row.inPlay) return "in_play";
   if (Number.isFinite(ev) && ev >= 0 && row.hardRockPrice != null) return "fair_or_better";
   if (Number.isFinite(ev) && ev >= DEFAULTS.closeEnoughEv && ev < 0 && isMainMarket(row.marketType) && (isPlayCore(row.sport) || isCollegeSport(row.sport))) {
@@ -190,10 +183,11 @@ export function scoreQuotes(snapshot: DeskSnapshot): ScanRow[] {
       const book = line.hardRockPrice ?? (line.source === "hardrock_fl" ? line.price : undefined);
       const price = book ?? line.price;
       const ev = Number.isFinite(fair) ? evPct(price, fair) : NaN;
-      
-      const isCompleted = isGameCompleted(line.phase);
-      const inPlay = Boolean(line.inPlay); // Stripped the Date.now() fallback
-      
+      // inPlay is strictly from the API feed — no Date.now() fallback.
+      // A clock inference would corrupt The Call with stale pre-game picks.
+      const inPlay = Boolean(line.inPlay);
+      // Completed games (phase = "post" | "final") are dropped from the active board.
+      if (line.phase === "post" || line.phase === "final") continue;
       const base = {
         eventId: line.eventId,
         sport: line.sport,
@@ -242,17 +236,13 @@ export function scoreQuotes(snapshot: DeskSnapshot): ScanRow[] {
         tag === "juiced" ||
         tag === "unknown_market" ||
         !Number.isFinite(ev) ||
-        Boolean(line.scheduleOnly) ||
-        isCompleted;
-        
+        Boolean(line.scheduleOnly);
       rows.push({
         ...base,
-        tag: isCompleted ? "in_play" : line.scheduleOnly ? "juiced" : tag,
+        tag: line.scheduleOnly ? "juiced" : tag,
         action: stand ? "stand_down" : "enter_ticket",
         reason:
-          isCompleted 
-            ? "This game has already concluded. Standing down."
-            : line.scheduleOnly
+          line.scheduleOnly
             ? "This matchup is on the calendar. ESPN has not posted a two-way price yet — photograph Hard Rock when the number drops."
             : tag === "illegal_fl"
             ? line.isProp && isCollegeSport(line.sport)
@@ -275,10 +265,9 @@ export function scoreQuotes(snapshot: DeskSnapshot): ScanRow[] {
 
   for (const line of snapshot.quotes) {
     if (paired.has(line)) continue;
-    
-    const isCompleted = isGameCompleted(line.phase);
-    const inPlay = Boolean(line.inPlay); // Stripped the Date.now() fallback
-    
+    // inPlay strictly from API feed; completed games dropped. (BIBLE live-board rules)
+    if (line.phase === "post" || line.phase === "final") continue;
+    const inPlay = Boolean(line.inPlay);
     const book = line.hardRockPrice ?? (line.source === "hardrock_fl" ? line.price : undefined);
     const price = book ?? line.price;
     const implied = americanToImplied(price);
@@ -340,7 +329,7 @@ export function scoreQuotes(snapshot: DeskSnapshot): ScanRow[] {
         ? "unknown_market"
         : tag === "illegal_fl"
           ? "illegal_fl"
-          : inPlay || isCompleted
+          : inPlay
             ? "in_play"
             : "juiced";
     rows.push({
@@ -352,9 +341,7 @@ export function scoreQuotes(snapshot: DeskSnapshot): ScanRow[] {
           ? "College player bets are not allowed on Hard Rock Bet."
           : unknown
             ? unknownMarketReason(line.selection)
-            : isCompleted
-              ? "This game has concluded. Standing down."
-              : "Only one side of the market is listed — we cannot call this a fair price.",
+            : "Only one side of the market is listed — we cannot call this a fair price.",
       conviction: "low",
       spark: "missing two-way",
     });
@@ -405,7 +392,7 @@ export function pickBestMain(rows: ScanRow[]): ScanRow | null {
   const pays = pool.filter((r) => payoutMultiple(r.price) >= 0.65 && Number.isFinite(r.fairProb));
   const easy = pays.filter((r) => r.fairProb >= 0.5);
   const likely = pays.filter((r) => r.fairProb >= 0.45);
-  const ranked = easy.length ? easy : likely.length ? pays.length ? pays : pool : pool;
+  const ranked = easy.length ? easy : likely.length ? likely : pays.length ? pays : pool;
   return [...ranked].sort(byValue)[0] ?? null;
 }
 

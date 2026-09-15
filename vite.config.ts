@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
@@ -6,8 +6,6 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { nitro } from "nitro/vite";
-// @ts-expect-error JS plugin alongside the TS vite config
-import { grokPwaPlugin } from "./scripts/grok-pwa-plugin.mjs";
 // @ts-expect-error JS plugin alongside the TS vite config
 import { appEnvPlugin } from "./scripts/app-env-plugin.mjs";
 import { isMigrationFile } from "./scripts/migration-plan.mjs";
@@ -47,6 +45,39 @@ function pgliteBootstrapPlugin(): Plugin {
         console.error("[app-builder] DB bootstrap failed:", err);
         throw err;
       }
+    },
+  };
+}
+
+/**
+ * Native SportsLock PWA — serves /manifest.webmanifest from public/ (or
+ * synthesizes one), no platform chrome or Grok branding injected.
+ */
+function sportslockPwaPlugin(): Plugin {
+  return {
+    name: "sportslock:pwa",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url === "/manifest.webmanifest" || req.url === "/manifest.json") {
+          const file = join(process.cwd(), "public", "manifest.webmanifest");
+          const content = existsSync(file)
+            ? readFileSync(file, "utf8")
+            : JSON.stringify({
+                name: "SportsLock",
+                short_name: "SportsLock",
+                start_url: "/",
+                display: "standalone",
+                background_color: "#0B0B0C",
+                theme_color: "#0B0B0C",
+                icons: [{ src: "/icon-180.png", sizes: "180x180", type: "image/png" }],
+              });
+          res.setHeader("content-type", "application/manifest+json; charset=utf-8");
+          res.setHeader("cache-control", "no-cache");
+          res.end(content);
+          return;
+        }
+        next();
+      });
     },
   };
 }
@@ -189,8 +220,8 @@ export default defineConfig(({ command, isPreview }) => ({
     authPopupPlugin(),
     // Dev-only /__app-env, read by scripts/check-auth-invariant.mjs.
     appEnvPlugin(),
-    // PWA head + ?install=1 tutorial page; runs before Start/Nitro.
-    grokPwaPlugin(),
+    // SportsLock native PWA — manifest + icons, no platform chrome.
+    sportslockPwaPlugin(),
     tailwindcss(),
     tanstackStart(),
     ...(command === "build" || isPreview

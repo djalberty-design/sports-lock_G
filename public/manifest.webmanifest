@@ -1,0 +1,12 @@
+{
+  "name": "SportsLock",
+  "short_name": "SportsLock",
+  "description": "Public decision desk for Florida — Intelligence. Edge. Confidence.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0B0C",
+  "theme_color": "#0B0B0C",
+  "icons": [
+    { "src": "/icon-180.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
