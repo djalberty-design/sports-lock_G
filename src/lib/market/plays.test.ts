@@ -8,7 +8,6 @@ import {
   evaluateParlay,
   evPct,
   pickBestMain,
-  pickCoinFlip,
   product,
   rejectParlayReason,
   twoWayNoVig,
@@ -487,6 +486,7 @@ test("pickBestMain is empty when the only games are later this week", () => {
   assert.equal(scan.bestFlip, null);
   assert.equal(scan.bestTwo, null);
 });
+
 
 
 

@@ -13,8 +13,8 @@ export type ChanceLayer = {
   empty?: boolean;
 };
 
-import { analyzeScores, earlySeasonDamp, ewmaWeights, formTrend, splitByVenue, vsOpponent } from "./form.ts";
-import { defenseAllowed, processFromLooks, underlyingOffense, underlyingPitch, type TeamLooks } from "./looks.ts";
+import { analyzeScores, earlySeasonDamp, ewmaWeights, vsOpponent } from "./form.ts";
+import { processFromLooks, type TeamLooks } from "./looks.ts";
 import { lookupVenue, weatherAtVenue } from "./venues.ts";
 import { restEffect } from "./rest.ts";
 import { type PlayerVolumeBaseline } from "./feed-adapter.ts";
@@ -159,12 +159,7 @@ export function logit(p: number): number {
 
 
 
-function unit01(n?: number): number | null {
-  if (n == null || !Number.isFinite(n)) return null;
-  const p = n > 1 ? n / 100 : n;
-  if (p <= 0.02 || p >= 0.98) return null;
-  return p;
-}
+
 
 
 
@@ -949,4 +944,6 @@ case "points_nba":
       return 0;
   }
 }
+
+
 
