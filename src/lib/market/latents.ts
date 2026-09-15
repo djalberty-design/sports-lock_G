@@ -12,7 +12,10 @@ import { applyMatchupToMeans } from "./matchup-g.ts";
 import { capLatentToClose } from "./g-cap.ts";
 import { applyOfficialsToMeans, type OfficialPosting } from "./officials.ts";
 import { enrichOfficialsWithTendencies } from "./officials-registry.ts";
-import { applyNflToMeans } from "./nfl-matchup.ts";`nimport { applyMlbParkToMeans } from "./mlb-park.ts";`nimport { applyNcaafBlowoutToMeans } from "./ncaaf-blowout.ts";`nimport { applyNhlGoalieToMeans } from "./nhl-goalie.ts";
+import { applyNflToMeans } from "./nfl-matchup.ts";
+import { applyMlbParkToMeans } from "./mlb-park.ts";
+import { applyNcaafBlowoutToMeans } from "./ncaaf-blowout.ts";
+import { applyNhlGoalieToMeans } from "./nhl-goalie.ts";
 
 export type LiveLatentFields = {
   inPlay?: boolean;
