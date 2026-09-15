@@ -116,6 +116,8 @@ export type ChanceInput = {
   awayThreePointRate?: number;
   homeOppThreePtAllowed?: number;
   awayOppThreePtAllowed?: number;
+  homeLoadManagementOut?: boolean;
+  awayLoadManagementOut?: boolean;
   ticketHome?: number;
   handleHome?: number;
   steam?: boolean;

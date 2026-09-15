@@ -17,6 +17,7 @@ import { applyMlbParkToMeans } from "./mlb-park.ts";
 import { applyNcaafBlowoutToMeans } from "./ncaaf-blowout.ts";
 import { applyNhlGoalieToMeans } from "./nhl-goalie.ts";
 import { applyHoopsVarianceToMeans } from "./hoops-variance.ts";
+import { applyNbaVarianceToMeans } from "./nba-variance.ts";
 
 export type LiveLatentFields = {
   inPlay?: boolean;
@@ -108,6 +109,20 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
     latent.muA = hoopsMeans.muA;
   }
 
+  const hoopsVarianceMeans = applyHoopsVarianceToMeans(input);
+  if (!hoopsVarianceMeans.empty) {
+    latent.muH *= hoopsVarianceMeans.muH;
+    latent.muA *= hoopsVarianceMeans.muA;
+    latent.chaos += hoopsVarianceMeans.chaosAdd;
+  }
+
+  const nbaVarianceMeans = applyNbaVarianceToMeans(input);
+  if (!nbaVarianceMeans.empty) {
+    latent.muH *= nbaVarianceMeans.muH;
+    latent.muA *= nbaVarianceMeans.muA;
+    latent.chaos += nbaVarianceMeans.chaosAdd;
+  }
+
   const nflMeans = applyNflToMeans(input, latent.muH, latent.muA);
   if (!nflMeans.empty) {
     latent.muH *= nflMeans.muH;
@@ -139,7 +154,7 @@ export function buildLatents(input: ChanceInput & { eventId: string; chanceHome?
   );
   latent.muH *= venueMeans.muH * restMeans.muH * avail.muH * processMeans.muH * recencyMeans.muH * splitMeans.muH * matchupMeans.muH * officialMeans.muH;
   latent.muA *= venueMeans.muA * restMeans.muA * avail.muA * processMeans.muA * recencyMeans.muA * splitMeans.muA * matchupMeans.muA * officialMeans.muA;
-  const note = [venueMeans.note, restMeans.note, avail.note, processMeans.empty ? undefined : processMeans.note, recencyMeans.empty ? undefined : recencyMeans.note, splitMeans.empty ? undefined : splitMeans.note, matchupMeans.empty ? undefined : matchupMeans.note, officialMeans.empty ? undefined : officialMeans.note, mlbParkMeans.empty ? undefined : mlbParkMeans.note, ncaafBlowoutMeans.empty ? undefined : ncaafBlowoutMeans.note, nhlGoalieMeans.empty ? undefined : nhlGoalieMeans.note, typeof hoopsMeans !== "undefined" && !hoopsMeans.empty ? hoopsMeans.note : undefined, typeof hoopsVarianceMeans !== "undefined" && !hoopsVarianceMeans.empty ? hoopsVarianceMeans.note : undefined, typeof nflMeans !== "undefined" && !nflMeans.empty ? nflMeans.note : undefined].filter(Boolean).join(" ");
+  const note = [venueMeans.note, restMeans.note, avail.note, processMeans.empty ? undefined : processMeans.note, recencyMeans.empty ? undefined : recencyMeans.note, splitMeans.empty ? undefined : splitMeans.note, matchupMeans.empty ? undefined : matchupMeans.note, officialMeans.empty ? undefined : officialMeans.note, mlbParkMeans.empty ? undefined : mlbParkMeans.note, ncaafBlowoutMeans.empty ? undefined : ncaafBlowoutMeans.note, nhlGoalieMeans.empty ? undefined : nhlGoalieMeans.note, typeof hoopsMeans !== "undefined" && !hoopsMeans.empty ? hoopsMeans.note : undefined, typeof hoopsVarianceMeans !== "undefined" && !hoopsVarianceMeans.empty ? hoopsVarianceMeans.note : undefined, typeof nbaVarianceMeans !== "undefined" && !nbaVarianceMeans.empty ? nbaVarianceMeans.note : undefined, typeof nflMeans !== "undefined" && !nflMeans.empty ? nflMeans.note : undefined].filter(Boolean).join(" ");
   if (note) latent.note = note;
   const capped = capLatentToClose(latent);
   const next = applyLiveRemaining(capped, {
@@ -180,6 +195,9 @@ function applyHoopsToMeans(input: ChanceInput): { muH: number; muA: number; chao
     note: "Pace/Eff decoupled (${projectedPace.toFixed(1)} pace)."
   };
 }
+
+
+
 
 
 
